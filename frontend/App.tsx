@@ -51,6 +51,7 @@ export default function Home() {
     } | null>(null),
     [msg, setMsg] = useState(""),
     [busy, setBusy] = useState(false),
+    [mobileNavOpen, setMobileNavOpen] = useState(false),
     [fresh, setFresh] = useState(0);
   const t = (k: string) => tr(lang, k),
     user =
@@ -139,49 +140,78 @@ export default function Home() {
     }
   };
   const header = (
-    <header className="app-header flex items-center justify-between gap-3 border-b bg-white px-4 py-3">
-      <button
-        onClick={() =>
-          setPage(
-            currentUser
-              ? role === "farmer"
-                ? "farmer"
-                : role === "buyer"
-                  ? "buyer"
-                  : "admin"
-              : "home",
-          )
-        }
-        className="text-left"
-      >
-        <b className="text-xl text-green-800">🌾 KhetLoop</b>
-        <div className="text-xs text-slate-600">Keep straw in the loop</div>
-      </button>
-      <div className="flex items-center gap-2">
-        <label className="sr-only">{t("language")}</label>
-        <select
-          className="rounded-lg border p-2"
-          value={lang}
-          onChange={(e) => setLang(e.target.value as Language)}
-          aria-label={t("language")}
+    <header className="site-header">
+      <div className="header-inner">
+        <button
+          onClick={() => { setPage(currentUser ? role : "home"); setMobileNavOpen(false); }}
+          className="brand-lockup"
+          aria-label="KhetLoop home"
         >
-          <option value="en">EN</option>
-          <option value="hi">हिंदी</option>
-          <option value="pa">ਪੰਜਾਬੀ</option>
-        </select>
-        {currentUser && (
-          <button
-            className="secondary !p-2"
-            onClick={async () => {
-              await fetch("/api/auth/logout", { method: "POST" });
-              setCurrentUser(null);
-              setPage("home");
-              setMsg("");
-            }}
-          >
-            Log out
-          </button>
-        )}
+          <span className="brand-symbol" aria-hidden="true">K</span>
+          <span className="brand-words"><b>KhetLoop</b><small>Harvest value, kept local</small></span>
+        </button>
+        <button
+          className="mobile-menu-toggle"
+          type="button"
+          aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}
+          aria-expanded={mobileNavOpen}
+          onClick={() => setMobileNavOpen((open) => !open)}
+        >
+          <span></span><span></span><span></span>
+        </button>
+        <div className={`header-navigation ${mobileNavOpen ? "is-open" : ""}`}>
+          <nav className="primary-nav" aria-label="Main navigation">
+            {[
+              ...(currentUser ? [{ label: "Dashboard", target: role }] : [{ label: "Home", target: "home" }]),
+              { label: "About", target: "about" },
+              { label: "Contact", target: "contact" },
+            ].map((item) => (
+              <button
+                key={item.target}
+                className={page === item.target ? "nav-link active" : "nav-link"}
+                aria-current={page === item.target ? "page" : undefined}
+                onClick={() => { setPage(item.target); setMobileNavOpen(false); setMsg(""); }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+          <div className="header-actions">
+            <label className="sr-only" htmlFor="language-select">{t("language")}</label>
+            <select
+              id="language-select"
+              className="language-select"
+              value={lang}
+              onChange={(e) => setLang(e.target.value as Language)}
+              aria-label={t("language")}
+            >
+              <option value="en">EN</option>
+              <option value="hi">हिंदी</option>
+              <option value="pa">ਪੰਜਾਬੀ</option>
+            </select>
+            {currentUser ? (
+              <button
+                className="header-user"
+                title="Sign out"
+                onClick={async () => {
+                  await fetch("/api/auth/logout", { method: "POST" });
+                  setCurrentUser(null);
+                  setPage("home");
+                  setMsg("");
+                  setMobileNavOpen(false);
+                }}
+              >
+                <span className="user-avatar">{currentUser.name.slice(0, 1).toUpperCase()}</span>
+                <span className="header-user-name">{currentUser.name}</span>
+                <span className="logout-label">Log out</span>
+              </button>
+            ) : (
+              <button className="primary header-signin" onClick={() => { setPage("auth"); setMobileNavOpen(false); }}>
+                Sign in <span aria-hidden="true">→</span>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </header>
   );
@@ -192,7 +222,7 @@ export default function Home() {
     <main className={`app-shell page-${page} mx-auto min-h-screen bg-[#f4f7ef]`}>
       {header}
       <div className={`app-content app-content-${page} space-y-4 p-4`}>
-        {msg && (
+        {msg && page !== "auth" && (
           <div role="status" className="card border-amber-300 text-amber-900">
             {msg}
           </div>
@@ -202,6 +232,18 @@ export default function Home() {
     </main>
   );
   if (page === "home")
+    return frame(
+      <LandingPage
+        impact={impact}
+        onStart={() => { setPage("auth"); setMsg(""); }}
+        onAbout={() => setPage("about")}
+      />,
+    );
+  if (page === "about")
+    return frame(<AboutPage onStart={() => setPage(currentUser ? role : "auth")} />);
+  if (page === "contact")
+    return frame(<ContactPage />);
+  if (page === "auth")
     return frame(
       <LoginView
         lang={lang}
@@ -623,6 +665,101 @@ export default function Home() {
       </section>
     </>,
   );
+}
+function LandingPage({
+  impact,
+  onStart,
+  onAbout,
+}: {
+  impact: any;
+  onStart: () => void;
+  onAbout: () => void;
+}) {
+  return (
+    <div className="public-page landing-page">
+      <section className="landing-hero">
+        <div className="landing-copy">
+          <span className="eyebrow-pill"><span></span> A LOCAL MARKETPLACE FOR CROP RESIDUE</span>
+          <h1>Good for your farm.<br /><em>Better for the future.</em></h1>
+          <p>KhetLoop connects farmers with nearby buyers so leftover crop residue can become a valuable resource instead of going to waste.</p>
+          <div className="landing-actions">
+            <button className="primary landing-primary" onClick={onStart}>Get started <span aria-hidden="true">→</span></button>
+            <button className="text-action" onClick={onAbout}>See how it works <span aria-hidden="true">↗</span></button>
+          </div>
+          <div className="landing-proof"><div className="proof-avatars"><span>F</span><span>B</span><span>↗</span></div><span>Farmers and buyers, working in the same loop</span></div>
+        </div>
+        <div className="landing-art" aria-label="A preview of the KhetLoop crop residue marketplace" role="img">
+          <div className="art-sun"></div><div className="art-field art-field-back"></div><div className="art-field art-field-front"></div>
+          <div className="market-preview">
+            <div className="preview-head"><span className="preview-mark">K</span><span><b>Residue marketplace</b><small>Opportunities near you</small></span><span className="preview-live">LIVE</span></div>
+            <div className="preview-listing"><span className="preview-crop">🌾</span><span><b>Paddy straw</b><small>Available · 12.5 tonnes</small></span><strong>₹1,800<small>/ tonne</small></strong></div>
+            <div className="preview-listing"><span className="preview-crop wheat">🌿</span><span><b>Wheat residue</b><small>Nearby buyer match</small></span><span className="match-score">92%<small>match</small></span></div>
+            <div className="preview-footer"><span><i></i> Built around your district</span><span>→</span></div>
+          </div>
+          <div className="art-note"><span>♻</span><span><b>Waste to worth</b><small>Keep resources moving</small></span></div>
+        </div>
+      </section>
+      <section className="impact-strip" aria-label="KhetLoop community impact">
+        <div><strong>{impact?.farmers ?? "—"}</strong><span>Farmers connected</span></div>
+        <div><strong>{impact?.companies ?? "—"}</strong><span>Buyers on the loop</span></div>
+        <div><strong>{impact?.tonnes ?? "—"} t</strong><span>Residue listed</span></div>
+        <div><strong>{Number(impact?.co2Avoided ?? 0).toFixed(1)} t</strong><span>Estimated CO₂ avoided</span></div>
+      </section>
+      <section className="how-section">
+        <div className="section-intro"><span className="section-kicker">A SIMPLE, LOCAL LOOP</span><h2>From leftover to opportunity</h2><p>Every step is designed to make residue easier to find, price, and put to use.</p></div>
+        <div className="how-grid">
+          <article className="how-card"><span className="step-number">01</span><div className="how-icon">🌾</div><h3>List your residue</h3><p>Farmers share crop type, quantity, and when it will be ready.</p></article>
+          <article className="how-card"><span className="step-number">02</span><div className="how-icon">⌕</div><h3>Find a nearby match</h3><p>Buyers discover local supply that fits their needs and timing.</p></article>
+          <article className="how-card"><span className="step-number">03</span><div className="how-icon">↗</div><h3>Move it to good use</h3><p>Coordinate collection and keep useful biomass in circulation.</p></article>
+        </div>
+      </section>
+      <section className="landing-cta"><div><span className="section-kicker">START WITH YOUR NEXT HARVEST</span><h2>Make crop residue count.</h2><p>Join the local network connecting agricultural supply with real demand.</p></div><button className="primary" onClick={onStart}>Create your account <span aria-hidden="true">→</span></button></section>
+      <PublicFooter onAbout={onAbout} />
+    </div>
+  );
+}
+function AboutPage({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="public-page info-page">
+      <section className="info-hero">
+        <span className="section-kicker">ABOUT KHETLOOP</span>
+        <h1>Turning a seasonal challenge into a shared opportunity.</h1>
+        <p>When crop residue has a clear destination, farmers and local businesses can both benefit. KhetLoop helps them find each other and make the next step easier.</p>
+      </section>
+      <section className="about-story">
+        <div className="story-mark">K</div>
+        <div><span className="section-kicker">WHY WE EXIST</span><h2>Keep value close to where it grows.</h2><p>Crop residue is a resource with many possible uses. KhetLoop brings local supply and buyer demand together in one place, helping communities move biomass toward useful products like compost, biofuel, and more.</p><p>Our goal is a practical one: make it easier to find a match, agree on the details, and coordinate collection.</p></div>
+      </section>
+      <section className="value-grid">
+        <article className="value-card"><span>01</span><h3>Local by design</h3><p>Connections begin with nearby farmers, buyers, and collection windows.</p></article>
+        <article className="value-card"><span>02</span><h3>Clear expectations</h3><p>Crop, quantity, timing, and price stay visible while partners coordinate.</p></article>
+        <article className="value-card"><span>03</span><h3>Useful outcomes</h3><p>Help residue reach businesses that can turn it into something useful.</p></article>
+      </section>
+      <section className="landing-cta"><div><span className="section-kicker">BE PART OF THE LOOP</span><h2>Let’s make the next match.</h2><p>Sign in or create an account to get started.</p></div><button className="primary" onClick={onStart}>Get started <span aria-hidden="true">→</span></button></section>
+      <PublicFooter />
+    </div>
+  );
+}
+function ContactPage() {
+  const email = process.env.NEXT_PUBLIC_CONTACT_EMAIL;
+  return (
+    <div className="public-page info-page contact-page">
+      <section className="info-hero contact-hero">
+        <span className="section-kicker">CONTACT</span>
+        <h1>We’re here to help you keep things moving.</h1>
+        <p>Questions about a listing, a match, or your account? Choose the support path that fits your situation.</p>
+      </section>
+      <section className="contact-grid">
+        <article className="contact-card"><span className="contact-icon">✉</span><span className="section-kicker">GENERAL SUPPORT</span><h2>Talk to the KhetLoop team</h2>{email ? <><p>Send us a note and include your district and account type so we can help faster.</p><a className="contact-link" href={`mailto:${email}?subject=KhetLoop%20support`}>Email support <span aria-hidden="true">→</span></a></> : <><p>Direct support email has not been configured for this deployment yet.</p><small>For help with your account, contact the administrator who invited you.</small></>}</article>
+        <article className="contact-card contact-secondary"><span className="contact-icon">◎</span><span className="section-kicker">ACCOUNT APPROVAL</span><h2>Waiting for company approval?</h2><p>Company accounts need an administrator to approve them before sign-in. Your account details remain saved while you wait.</p><div className="contact-note">Tip: include your company name and registered phone number when asking about approval.</div></article>
+        <article className="contact-card contact-secondary"><span className="contact-icon">⌖</span><span className="section-kicker">MARKETPLACE HELP</span><h2>Need help with a listing?</h2><p>Have your crop type, quantity, district, and listing status ready. These details help the team understand the issue quickly.</p></article>
+      </section>
+      <PublicFooter />
+    </div>
+  );
+}
+function PublicFooter({ onAbout }: { onAbout?: () => void }) {
+  return <footer className="public-footer"><span>© {new Date().getFullYear()} KhetLoop</span><span>Keep harvest value moving locally.</span>{onAbout && <button onClick={onAbout}>About KhetLoop</button>}</footer>;
 }
 function LoginView({
   lang,
