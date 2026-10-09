@@ -190,21 +190,23 @@ export default function Home() {
               <option value="pa">ਪੰਜਾਬੀ</option>
             </select>
             {currentUser ? (
-              <button
-                className="header-user"
-                title="Sign out"
-                onClick={async () => {
-                  await fetch("/api/auth/logout", { method: "POST" });
-                  setCurrentUser(null);
-                  setPage("home");
-                  setMsg("");
-                  setMobileNavOpen(false);
-                }}
-              >
+              <div className="signed-in-user">
                 <span className="user-avatar">{currentUser.name.slice(0, 1).toUpperCase()}</span>
                 <span className="header-user-name">{currentUser.name}</span>
-                <span className="logout-label">Log out</span>
-              </button>
+                <button
+                  className="primary header-signout"
+                  title="Sign out"
+                  onClick={async () => {
+                    await fetch("/api/auth/logout", { method: "POST" });
+                    setCurrentUser(null);
+                    setPage("home");
+                    setMsg("");
+                    setMobileNavOpen(false);
+                  }}
+                >
+                  Log out <span aria-hidden="true">→</span>
+                </button>
+              </div>
             ) : (
               <button className="primary header-signin" onClick={() => { setPage("auth"); setMobileNavOpen(false); }}>
                 Sign in <span aria-hidden="true">→</span>
@@ -522,16 +524,18 @@ export default function Home() {
     <>
       <section className="card dashboard-hero admin-hero">
         <div className="admin-hero-copy">
+          <span className="dashboard-eyebrow">KHETLOOP · OPERATIONS</span>
           <h1 className="text-2xl font-bold">
-            {t("admin")} · {t("dashboard")}
+            {t("admin")} dashboard
           </h1>
-          <p className="mt-2 text-xs">
-            Impact factors are approximate estimates and can be edited in
-            shared/config.ts.
+          <p>
+            Track the residue reaching new uses, review company requests, and
+            keep pickups moving.
           </p>
+          <span className="admin-live-status"><i /> Live programme overview</span>
         </div>
         <button
-          className="secondary"
+          className="secondary admin-reset"
           onClick={async () => {
             if (confirm("Reset all demo data?")) {
               await post("/api/reset", {});
@@ -539,26 +543,28 @@ export default function Home() {
             }
           }}
         >
-          {t("reset")}
+          <span aria-hidden="true">↺</span> {t("reset")}
         </button>
       </section>
       <section className="card admin-approvals">
-        <h2 className="text-lg font-bold">Company approval requests</h2>
+        <div className="admin-section-heading">
+          <div><span className="admin-section-icon">✓</span><div><h2>Company approvals</h2><p>Review businesses before they join the marketplace.</p></div></div>
+          <span className={`admin-count ${pendingCompanies?.length ? "has-pending" : ""}`}>{pendingCompanies?.length ?? "…"} pending</span>
+        </div>
         {!pendingCompanies ? (
-          <p className="mt-2 text-sm">Loading requests…</p>
+          <div className="admin-empty"><span className="admin-empty-icon">◌</span><span>Loading approval requests…</span></div>
         ) : pendingCompanies.length === 0 ? (
-          <p className="mt-2 text-sm">No companies waiting for approval.</p>
+          <div className="admin-empty"><span className="admin-empty-icon">✓</span><span><b>All caught up</b><small>No companies are waiting for approval.</small></span></div>
         ) : (
           pendingCompanies.map((c) => (
             <div
               key={c.id}
-              className="flex items-center justify-between border-b py-2"
+              className="admin-approval-row"
             >
-              <span>
-                {c.name} · {c.district}
-              </span>
+              <span className="admin-company-avatar">{c.name.slice(0,1).toUpperCase()}</span>
+              <span className="admin-company-info"><b>{c.name}</b><small>{c.district} · Company account</small></span>
               <button
-                className="primary !p-2"
+                className="primary admin-approve-button"
                 onClick={async () => {
                   const r = await fetch("/api/admin/approvals", {
                     method: "POST",
@@ -571,7 +577,7 @@ export default function Home() {
                   }
                 }}
               >
-                Approve
+                Approve company <span aria-hidden="true">→</span>
               </button>
             </div>
           ))
@@ -579,56 +585,59 @@ export default function Home() {
       </section>
       <div className="grid grid-cols-2 gap-3 admin-kpis">
         {[
-          [t("totalTonnes"), `${impact?.tonnes ?? 0} t`],
-          [t("co2"), `${(impact?.co2Avoided ?? 0).toFixed(1)} t`],
+          ["↗", t("totalTonnes"), `${impact?.tonnes ?? 0} t`, "Residue collected or paid"],
+          ["◉", t("co2"), `${(impact?.co2Avoided ?? 0).toFixed(1)} t`, "Estimated emissions avoided"],
           [
+            "₹",
             t("rupees"),
             `₹${(impact?.rupeesPaid ?? 0).toLocaleString("en-IN")}`,
+            "Value returned to farmers",
           ],
-          [t("farmers"), impact?.farmers ?? 0],
-          [t("companies"), impact?.companies ?? 0],
-        ].map(([k, v]) => (
-          <div className="card admin-kpi-card" key={String(k)}>
-            <div className="text-sm">{k}</div>
-            <b className="text-xl">{v}</b>
+          ["♧", t("farmers"), impact?.farmers ?? 0, "Registered on KhetLoop"],
+          ["▦", t("companies"), impact?.companies ?? 0, "Marketplace buyers"],
+        ].map(([icon, label, value, note]) => (
+          <div className="card admin-kpi-card" key={String(label)}>
+            <div className="admin-kpi-top"><span className="admin-kpi-icon">{icon}</span><span className="admin-kpi-label">{label}</span></div>
+            <b>{value}</b>
+            <small>{note}</small>
           </div>
         ))}
       </div>
       <section className="card admin-districts">
-        <h2 className="text-lg font-bold">{t("districtBreakdown")}</h2>
-        {(Object.entries(impact?.byDistrict ?? {}) as [string, number][]).map(
-          ([d, n]) => (
-            <div className="flex justify-between border-b py-2" key={d}>
-              <span>{d}</span>
-              <b>{n} t</b>
+        <div className="admin-section-heading"><div><span className="admin-section-icon">⌖</span><div><h2>{t("districtBreakdown")}</h2><p>Collected residue across active regions.</p></div></div></div>
+        {(() => {
+          const districts = Object.entries(impact?.byDistrict ?? {}) as [string, number][];
+          const max = Math.max(1, ...districts.map(([, tonnes]) => tonnes));
+          return districts.length ? districts.sort((a, b) => b[1] - a[1]).map(([district, tonnes]) => (
+            <div className="admin-district-row" key={district}>
+              <div><span>{district}</span><b>{tonnes.toFixed(1)} <small>t</small></b></div>
+              <div className="admin-meter"><i style={{ width: `${Math.max(4, tonnes / max * 100)}%` }} /></div>
             </div>
-          ),
-        )}
+          )) : <div className="admin-empty"><span className="admin-empty-icon">⌖</span><span><b>No district activity yet</b><small>Collected residue will appear here.</small></span></div>;
+        })()}
       </section>
       <section className="card admin-listings">
-        <h2 className="text-lg font-bold">{t("listings")}</h2>
+        <div className="admin-section-heading"><div><span className="admin-section-icon">▤</span><div><h2>Residue listings</h2><p>Monitor supply and update pickup progress.</p></div></div><span className="admin-listing-total">{listings?.length ?? 0} total</span></div>
         {ll ? (
           <p>{t("loading")}</p>
         ) : le ? (
           <p>{t("error")}</p>
         ) : (
           (listings ?? []).map((l) => (
-            <div key={l.id} className="border-b py-2">
-              <div className="flex justify-between">
-                <span>
-                  {seedUsers.find((u) => u.id === l.farmerId)?.name} · {l.crop}{" "}
-                  · {l.estimatedTonnes} t
-                </span>
+            <div key={l.id} className="admin-listing-row">
+              <div className="admin-listing-main">
+                <span className="admin-listing-icon">{l.crop === "wheat" ? "✳" : "❋"}</span>
+                <div className="admin-listing-copy"><b>{seedUsers.find((u) => u.id === l.farmerId)?.name ?? "Farmer"}</b><small>{l.crop} · {l.estimatedTonnes} tonnes · {seedUsers.find((u) => u.id === l.farmerId)?.district ?? "KhetLoop farmer"}</small></div>
                 {status(l.status)}
               </div>
               {(matches ?? [])
                 .filter((m) => m.listingId === l.id)
                 .map((m) => (
-                  <div key={m.id} className="mt-1 flex items-center gap-2">
-                    <span className="text-xs">{m.id.slice(0, 10)}</span>
+                  <div key={m.id} className="admin-match-row">
+                    <span className="admin-match-id">Match {m.id.slice(0, 8)}</span>
                     {m.status === "pickup_scheduled" && (
                       <button
-                        className="secondary !p-1 text-xs"
+                        className="secondary admin-action-button"
                         onClick={async () => {
                           await fetch("/api/matches/" + m.id, {
                             method: "PATCH",
@@ -643,7 +652,7 @@ export default function Home() {
                     )}
                     {m.status === "collected" && (
                       <button
-                        className="secondary !p-1 text-xs"
+                        className="secondary admin-action-button"
                         onClick={async () => {
                           await fetch("/api/matches/" + m.id, {
                             method: "PATCH",
