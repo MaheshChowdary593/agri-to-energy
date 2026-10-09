@@ -6,7 +6,8 @@ frontend:
         - npm ci --legacy-peer-deps
     build:
       commands:
-        - printenv | grep -E '^(USE_AWS|BEDROCK_MODEL_ID|DYNAMO_USERS_TABLE|DYNAMO_LISTINGS_TABLE|DYNAMO_DEMANDS_TABLE|DYNAMO_MATCHES_TABLE)=' >> .env.production || true
+        - echo 'USE_AWS=true' > .env.production
+        - printenv | grep -E '^(BEDROCK_MODEL_ID|DYNAMO_USERS_TABLE|DYNAMO_LISTINGS_TABLE|DYNAMO_DEMANDS_TABLE|DYNAMO_MATCHES_TABLE)=' >> .env.production || true
         - npm run build
   artifacts:
     baseDirectory: .next
