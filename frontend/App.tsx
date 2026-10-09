@@ -57,7 +57,8 @@ export default function Home() {
     [adminStatus, setAdminStatus] = useState("all"),
     [showApprovalHistory, setShowApprovalHistory] = useState(false),
     [showOnboarding, setShowOnboarding] = useState(false),
-    [profileCard, setProfileCard] = useState<any>(null);
+    [profileCard, setProfileCard] = useState<any>(null),
+    [resetCodes, setResetCodes] = useState<Record<string,string>>({});
   const t = (k: string) => tr(lang, k),
     user =
       currentUser ?? seedUsers.find((u) => u.id === userId) ?? seedUsers[0];
@@ -96,7 +97,8 @@ export default function Home() {
     { data: approvalHistory, refresh: refreshApprovalHistory } = useApi<any[]>(
       "/api/admin/approvals/history?" + fresh,
     ),
-    { data: adminUsers } = useApi<User[]>("/api/admin/users?" + fresh);
+    { data: adminUsers } = useApi<User[]>("/api/admin/users?" + fresh),
+    { data: passwordResets, refresh: refreshPasswordResets } = useApi<any[]>("/api/admin/password-resets?" + fresh);
   const myListings = (listings ?? []).filter((x) => x.farmerId === user.id);
   const myDemands = (demands ?? []).filter((x) => x.buyerId === user.id);
   const adminVisibleListings = useMemo(() => {
@@ -326,6 +328,16 @@ export default function Home() {
           const result = await post("/api/auth/admin-recovery", { phone, password, recoveryKey });
           if (result?.ok) setMsg(t("adminPasswordReset"));
         }}
+        onRequestAccountReset={async (phone) => {
+          const result = await post("/api/auth/password-reset/request", { phone });
+          if (result?.ok) setMsg(result.message);
+          return Boolean(result?.ok);
+        }}
+        onCompleteAccountReset={async (phone, code, password) => {
+          const result = await post("/api/auth/password-reset/complete", { phone, code, password });
+          if (result?.ok) setMsg(t("passwordResetSuccess"));
+          return Boolean(result?.ok);
+        }}
       />,
     );
   if (page === "settings")
@@ -346,6 +358,21 @@ export default function Home() {
             setFresh((value) => value + 1);
             setMsg(t("profileUpdated"));
             setPage(result.user.role);
+          } catch (error) {
+            setMsg(error instanceof Error ? error.message : t("error"));
+          } finally {
+            setBusy(false);
+          }
+        }}
+        onChangePassword={async (currentPassword, newPassword) => {
+          setBusy(true);
+          setMsg("");
+          try {
+            const response = await fetch("/api/profile/password", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword, newPassword }) });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error ?? t("error"));
+            setMsg(t("passwordChanged"));
+            setPage(role);
           } catch (error) {
             setMsg(error instanceof Error ? error.message : t("error"));
           } finally {
@@ -676,6 +703,10 @@ export default function Home() {
         )}
         {showApprovalHistory && <div className="approval-history"><h3>{t("recentApprovals")}</h3>{!approvalHistory ? <p>{t("loading")}</p> : approvalHistory.length === 0 ? <p>{t("noApprovalHistory")}</p> : approvalHistory.slice(0, 8).map((record: any) => <div className="approval-history-row" key={record.user.id}><span className="admin-company-avatar">✓</span><span><b>{record.user.name}</b><small>{record.user.district} · {record.approvedAt ? new Date(record.approvedAt).toLocaleDateString(lang === "hi" ? "hi-IN" : lang === "pa" ? "pa-IN" : "en-IN") : t("approvalDateUnavailable")}</small></span><button className="profile-action" onClick={() => openProfile(record.user.id)}>{t("profile")}</button></div>)}</div>}
       </section>
+      <section className="card admin-approvals">
+        <div className="admin-section-heading"><div><span className="admin-section-icon">⌑</span><div><h2>{t("passwordResetRequests")}</h2><p>{t("confirmUserPhone")}</p></div></div></div>
+        {!passwordResets ? <p>{t("loading")}</p> : passwordResets.length === 0 ? <div className="admin-empty"><span className="admin-empty-icon">✓</span><span>{t("noPasswordResetRequests")}</span></div> : passwordResets.map((request:any) => <div className="admin-approval-row" key={request.id}><span className="admin-company-avatar">↻</span><span className="admin-company-info"><b>{request.userName}</b><small>{request.phone} · {new Date(request.requestedAt).toLocaleString()}</small></span><button className="primary admin-approve-button" onClick={async()=>{if(!confirm(t("confirmUserPhone")))return;const response=await fetch("/api/admin/password-resets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({requestId:request.id})});const result=await response.json();if(response.ok){setResetCodes(codes=>({...codes,[request.id]:result.code}));await refreshPasswordResets();}else setMsg(result.error??t("error"));}}>{t(request.status==="issued"?"issueNewCode":"verifyAndIssueCode")}</button>{resetCodes[request.id]&&<div className="password-reset-code"><code>{resetCodes[request.id]}</code><button className="profile-action" onClick={()=>void navigator.clipboard?.writeText(resetCodes[request.id])}>{t("copyCode")}</button><small>{t("resetCodeExpires")}</small></div>}</div>)}
+      </section>
       <div className="grid grid-cols-2 gap-3 admin-kpis">
         {[
           ["↗", t("totalTonnes"), `${impact?.tonnes ?? 0} t`, "Residue collected or paid"],
@@ -881,6 +912,8 @@ function LoginView({
   onSignIn,
   onRegister,
   onRecover,
+  onRequestAccountReset,
+  onCompleteAccountReset,
 }: {
   lang: Language;
   busy: boolean;
@@ -894,6 +927,8 @@ function LoginView({
     district: string,
   ) => Promise<void>;
   onRecover:(phone:string,password:string,recoveryKey:string)=>Promise<void>;
+  onRequestAccountReset:(phone:string)=>Promise<boolean>;
+  onCompleteAccountReset:(phone:string,code:string,password:string)=>Promise<boolean>;
 }) {
   const [mode, setMode] = useState<"login" | "register" | "recover">("login"),
     [kind, setKind] = useState<"farmer" | "buyer">("farmer"),
@@ -901,6 +936,11 @@ function LoginView({
     [phone, setPhone] = useState(""),
     [password, setPassword] = useState(""),
     [recoveryKey, setRecoveryKey] = useState(""),
+    [recoveryCode, setRecoveryCode] = useState(""),
+    [confirmResetPassword, setConfirmResetPassword] = useState(""),
+    [recoveryError, setRecoveryError] = useState(""),
+    [recoveryKind, setRecoveryKind] = useState<"account"|"admin">("account"),
+    [resetRequested, setResetRequested] = useState(false),
     [district, setDistrict] = useState("Ludhiana");
   const title =
     lang === "hi"
@@ -924,7 +964,7 @@ function LoginView({
       <section className="card auth-card">
         <div className="auth-heading">
           <span className="auth-eyebrow">YOUR HARVESTLOOP ACCOUNT</span>
-          <h2>{mode === "login" ? "Welcome back" : mode === "recover" ? tr(lang,"resetAdminPassword") : "Join the community"}</h2>
+          <h2>{mode === "login" ? "Welcome back" : mode === "recover" ? tr(lang,"forgotAdminPassword") : "Join the community"}</h2>
           <p>{mode === "login" ? "Sign in to continue to your workspace." : mode === "recover" ? tr(lang,"recoveryInstructions") : "Create an account to get started."}</p>
         </div>
         {mode !== "recover" && <div className="mb-4 flex gap-2">
@@ -951,7 +991,14 @@ function LoginView({
           onSubmit={(e) => {
             e.preventDefault();
             if (mode === "login") void onSignIn(phone, password);
-            else if(mode === "recover") void onRecover(phone,password,recoveryKey);
+            else if(mode === "recover") {
+              setRecoveryError("");
+              if(recoveryKind === "admin") void onRecover(phone,password,recoveryKey);
+              else if(resetRequested) {
+                if(password!==confirmResetPassword){setRecoveryError(tr(lang,"passwordMismatch"));return;}
+                void onCompleteAccountReset(phone,recoveryCode,password).then(ok=>{if(ok){setMode("login");setPassword("");setConfirmResetPassword("");setRecoveryCode("");setResetRequested(false);}});
+              } else void onRequestAccountReset(phone).then(ok=>{if(ok)setResetRequested(true);});
+            }
             else void onRegister(kind, name, phone, password, district);
           }}
         >
@@ -996,6 +1043,7 @@ function LoginView({
               </label>
             </>
           )}
+          {mode === "recover" && <div className="recovery-kind-switch" role="group" aria-label={tr(lang,"recoveryInstructions")}><button type="button" className={recoveryKind === "account" ? "primary" : "secondary"} onClick={()=>{setRecoveryKind("account");setResetRequested(false);setRecoveryCode("");setPassword("");}}>{tr(lang,"accountRecovery")}</button><button type="button" className={recoveryKind === "admin" ? "primary" : "secondary"} onClick={()=>{setRecoveryKind("admin");setResetRequested(false);setRecoveryCode("");setPassword("");}}>{tr(lang,"adminRecovery")}</button></div>}
           <label>
             Phone number
             <input
@@ -1005,24 +1053,16 @@ function LoginView({
               required
               minLength={8}
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => { setPhone(e.target.value); if(mode === "recover") {setResetRequested(false);setPassword("");setConfirmResetPassword("");setRecoveryCode("");} }}
             />
           </label>
-          <label>
-            {mode === "recover" ? tr(lang,"newPassword") : tr(lang,"password")}
-            <input
-              className="field"
-              type="password"
-              autoComplete={
-                mode === "login" ? "current-password" : "new-password"
-              }
-              required
-              minLength={mode === "recover" ? 8 : 6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </label>
-          {mode === "recover" && <label>{tr(lang,"recoveryKey")}<input className="field" type="password" autoComplete="off" required value={recoveryKey} onChange={event=>setRecoveryKey(event.target.value)} /></label>}
+          {(mode === "login" || (mode === "recover" && (recoveryKind === "admin" || resetRequested))) && <label>
+            {mode === "login" ? tr(lang,"password") : tr(lang,"newPassword")}
+            <input className="field" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} required minLength={mode === "login" ? 6 : 8} value={password} onChange={(e) => setPassword(e.target.value)} />
+          </label>}
+          {mode === "recover" && recoveryKind === "admin" && <label>{tr(lang,"recoveryKey")}<input className="field" type="password" autoComplete="off" required value={recoveryKey} onChange={event=>setRecoveryKey(event.target.value)} /></label>}
+          {mode === "recover" && recoveryKind === "account" && resetRequested && <><label>{tr(lang,"resetCode")}<input className="field" autoComplete="one-time-code" required minLength={8} maxLength={8} value={recoveryCode} onChange={event=>setRecoveryCode(event.target.value.toUpperCase())} /><small>{tr(lang,"enterResetCode")}</small></label><label>{tr(lang,"confirmPassword")}<input className="field" type="password" autoComplete="new-password" required minLength={8} value={confirmResetPassword} onChange={event=>setConfirmResetPassword(event.target.value)} /></label><p className="recovery-help">{tr(lang,"requestReviewNotice")}</p></>}
+          {recoveryError && <p className="password-form-error" role="alert">{recoveryError}</p>}
           {message && (
             <p
               role="alert"
@@ -1036,12 +1076,12 @@ function LoginView({
               ? "Please wait…"
               : mode === "login"
                 ? "Sign in"
-                : mode === "recover" ? tr(lang,"resetAdminPassword") : kind === "farmer"
+              : mode === "recover" ? recoveryKind === "admin" ? tr(lang,"resetAdminPassword") : resetRequested ? tr(lang,"setPassword") : tr(lang,"requestResetCode") : kind === "farmer"
                   ? "Create farmer account"
                   : "Request company account"}
           </button>
         </form>
-        {mode === "login" && <button className="recovery-link" type="button" onClick={()=>setMode("recover")}>{tr(lang,"forgotAdminPassword")}</button>}
+        {mode === "login" && <button className="recovery-link" type="button" onClick={()=>{setMode("recover");setRecoveryKind("account");setResetRequested(false);setRecoveryCode("");setPassword("");}}>{tr(lang,"forgotAdminPassword")}</button>}
         {mode !== "login" && <button className="recovery-link" type="button" onClick={()=>setMode("login")}>{tr(lang,"backToSignIn")}</button>}
         {mode === "login" && (
           <div className="demo-credentials mt-4 rounded-lg p-3 text-sm">
@@ -1067,16 +1107,22 @@ function ProfileSettings({
   t,
   onCancel,
   onSubmit,
+  onChangePassword,
 }: {
   user: User;
   busy: boolean;
   t: (key: string) => string;
   onCancel: () => void;
   onSubmit: (profile: { name: string; phone: string; village: string }) => void;
+  onChangePassword: (currentPassword: string, newPassword: string) => void;
 }) {
   const [name, setName] = useState(user.name),
     [phone, setPhone] = useState(user.phone),
-    [village, setVillage] = useState(user.village);
+    [village, setVillage] = useState(user.village),
+    [currentPassword, setCurrentPassword] = useState(""),
+    [newPassword, setNewPassword] = useState(""),
+    [confirmPassword, setConfirmPassword] = useState(""),
+    [passwordError, setPasswordError] = useState("");
   return (
     <section className="card profile-settings-card">
       <div className="profile-settings-heading">
@@ -1089,6 +1135,15 @@ function ProfileSettings({
         <label>{t("village")}<input className="field" autoComplete="address-level2" required minLength={2} maxLength={100} value={village} onChange={(event) => setVillage(event.target.value)} /></label>
         <div className="profile-settings-actions"><button type="button" className="secondary" onClick={onCancel}>{t("cancel")}</button><button className="primary" disabled={busy}>{busy ? t("savingChanges") : t("saveChanges")}</button></div>
       </form>
+      <section className="change-password-section">
+        <div><h2>{t("changePassword")}</h2><p>{t("passwordChangeHint")}</p></div>
+        <form className="profile-settings-form" onSubmit={(event) => { event.preventDefault(); setPasswordError(""); if (newPassword !== confirmPassword) { setPasswordError(t("passwordMismatch")); return; } onChangePassword(currentPassword, newPassword); }}>
+          <label>{t("currentPassword")}<input className="field" type="password" autoComplete="current-password" required value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} /></label>
+          <div className="profile-password-grid"><label>{t("newPassword")}<input className="field" type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /></label><label>{t("confirmPassword")}<input className="field" type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></label></div>
+          {passwordError && <p className="password-form-error" role="alert">{passwordError}</p>}
+          <div className="profile-settings-actions"><button className="primary" disabled={busy}>{busy ? t("savingChanges") : t("changePassword")}</button></div>
+        </form>
+      </section>
     </section>
   );
 }

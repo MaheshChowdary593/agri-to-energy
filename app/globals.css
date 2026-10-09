@@ -437,6 +437,18 @@ label .field { font-weight: 400; }
 .profile-settings-form label { display: grid; gap: 6px; color: #46584a; font-size: .79rem; font-weight: 700; }
 .profile-settings-form label small { color: #7c887b; font-size: .71rem; font-weight: 450; }
 .profile-settings-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; padding-top: 18px; border-top: 1px solid #edf0e9; }
+.change-password-section { display: grid; gap: 16px; margin-top: 32px; padding-top: 25px; border-top: 1px solid #e9ede5; }
+.change-password-section h2 { margin: 0; color: #284831; font-size: 1rem; }
+.change-password-section > div > p { margin: 4px 0 0; color: #7b867b; font-size: .75rem; }
+.profile-password-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
+.password-form-error { margin: 0; color: #a43e32; font-size: .76rem; }
+.recovery-kind-switch { display: flex; gap: 8px; margin: 4px 0 12px; }
+.recovery-kind-switch button { flex: 1; min-height: 41px; padding: 8px 11px; font-size: .76rem; }
+.recovery-help { margin: 0; padding: 11px 13px; border: 1px solid #e5eadc; border-radius: 10px; background: #f7f8f3; color: #657465; font-size: .73rem; }
+.password-reset-code { display: flex; flex: 1 0 100%; align-items: center; flex-wrap: wrap; gap: 9px; padding: 12px; border: 1px solid #dfe8d6; border-radius: 10px; background: #f7faf4; }
+.password-reset-code code { padding: 5px 9px; border-radius: 7px; background: #e8f0e1; color: #274c32; font-size: .95rem; font-weight: 800; letter-spacing: .15em; }
+.password-reset-code small { flex-basis: 100%; color: #728072; font-size: .69rem; }
+@media (max-width: 540px) { .profile-password-grid { grid-template-columns: 1fr; } }
 .verified-badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 99px; background: #edf5e9; color: #45734b; font-size: .69rem; font-weight: 750; }
 .onboarding-guide { position: relative; display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.3fr) auto; align-items: center; gap: 20px; border-color: #dce6d2; background: linear-gradient(115deg, #f4f7ed, #fff); }
 .onboarding-guide h2 { margin: 4px 0; color: #2a4c35; font-size: 1.05rem; }
