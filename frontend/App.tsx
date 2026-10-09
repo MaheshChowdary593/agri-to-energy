@@ -189,9 +189,9 @@ export default function Home() {
     <span className="chip">{t("status_" + s)}</span>
   );
   const frame = (children: React.ReactNode) => (
-    <main className="app-shell mx-auto min-h-screen bg-[#f4f7ef]">
+    <main className={`app-shell page-${page} mx-auto min-h-screen bg-[#f4f7ef]`}>
       {header}
-      <div className="app-content space-y-4 p-4">
+      <div className={`app-content app-content-${page} space-y-4 p-4`}>
         {msg && (
           <div role="status" className="card border-amber-300 text-amber-900">
             {msg}
@@ -238,14 +238,17 @@ export default function Home() {
   if (page === "farmer")
     return frame(
       <>
-        <section className="card">
-          <div className="text-sm text-slate-600">
+        <section className="card dashboard-hero farmer-hero">
+          <div className="dashboard-hero-copy">
+            <span className="dashboard-eyebrow">FARMER WORKSPACE</span>
+            <div className="text-sm text-slate-600">
             {user.name} · {user.district}
-          </div>
+            </div>
           <h1 className="text-2xl font-bold">{t("dashboard")}</h1>
           <p>{t("myListings")}</p>
+          </div>
           <button
-            className="primary mt-4 w-full text-lg"
+            className="primary hero-action text-lg"
             onClick={() => {
               setPage("add");
               setMsg("");
@@ -254,7 +257,7 @@ export default function Home() {
             ＋ {t("addResidue")}
           </button>
         </section>
-        <section className="card">
+        <section className="card farmer-earnings">
           <b>{t("totalEarned")}</b>
           <div className="mt-1 text-2xl font-bold">
             ₹
@@ -288,7 +291,7 @@ export default function Home() {
           myListings.map((l) => (
             <button
               key={l.id}
-              className="card w-full text-left"
+              className="card listing-card w-full text-left"
               onClick={() => goOffers(l)}
             >
               <div className="flex justify-between">
@@ -334,17 +337,17 @@ export default function Home() {
   if (page === "offers")
     return frame(
       <>
-        <button className="secondary" onClick={() => setPage(role)}>
+        <button className="secondary page-back" onClick={() => setPage(role)}>
           ← {t("dashboard")}
         </button>
         <h1 className="text-2xl font-bold">{t("offers")}</h1>
         {selected && (
-          <div className="card">
+          <div className="card offers-summary">
             {t(selected.crop)} · {selected.estimatedTonnes} tonnes
           </div>
         )}
         {advice && (
-          <div className="card border-green-300">
+          <div className="card advice-card border-green-300">
             <b>{t("bestUses")}</b>
             <p>{advice.bestUses.join(" · ")}</p>
             <p className="mt-2">
@@ -357,7 +360,7 @@ export default function Home() {
           <div className="card">{t("empty")}</div>
         ) : (
           offers.map((o) => (
-            <div key={o.id} className="card">
+            <div key={o.id} className="card offer-card">
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="text-lg font-bold">{o.company}</h2>
@@ -393,13 +396,17 @@ export default function Home() {
   if (page === "buyer")
     return frame(
       <>
-        <section className="card">
-          <div className="text-sm text-slate-600">
+        <section className="card dashboard-hero buyer-hero">
+          <div className="dashboard-hero-copy">
+            <span className="dashboard-eyebrow">BUYER WORKSPACE</span>
+            <div className="text-sm text-slate-600">
             {user.name} · {user.district}
-          </div>
+            </div>
           <h1 className="text-2xl font-bold">{t("dashboard")}</h1>
+          <p className="hero-description">Find local crop residue and manage your sourcing needs.</p>
+          </div>
           <button
-            className="primary mt-3 w-full"
+            className="primary hero-action"
             onClick={() => setPage("demand")}
           >
             ＋ {t("postDemand")}
@@ -419,7 +426,7 @@ export default function Home() {
               (l) => d.acceptedResidues.includes(l.crop) && l.status === "open",
             );
             return (
-              <div className="card" key={d.id}>
+              <div className="card demand-card" key={d.id}>
                 <b>{d.company}</b>
                 <p>
                   {d.product} · {d.tonnesNeeded} t · ₹{d.pricePerTonne}/t
@@ -471,29 +478,29 @@ export default function Home() {
     );
   return frame(
     <>
-      <section className="card">
-        <div className="flex items-center justify-between">
+      <section className="card dashboard-hero admin-hero">
+        <div className="admin-hero-copy">
           <h1 className="text-2xl font-bold">
             {t("admin")} · {t("dashboard")}
           </h1>
-          <button
-            className="secondary"
-            onClick={async () => {
-              if (confirm("Reset all demo data?")) {
-                await post("/api/reset", {});
-                setFresh((x) => x + 1);
-              }
-            }}
-          >
-            {t("reset")}
-          </button>
+          <p className="mt-2 text-xs">
+            Impact factors are approximate estimates and can be edited in
+            shared/config.ts.
+          </p>
         </div>
-        <p className="mt-2 text-xs">
-          Impact factors are approximate estimates and can be edited in
-          lib/config.ts.
-        </p>
+        <button
+          className="secondary"
+          onClick={async () => {
+            if (confirm("Reset all demo data?")) {
+              await post("/api/reset", {});
+              setFresh((x) => x + 1);
+            }
+          }}
+        >
+          {t("reset")}
+        </button>
       </section>
-      <section className="card">
+      <section className="card admin-approvals">
         <h2 className="text-lg font-bold">Company approval requests</h2>
         {!pendingCompanies ? (
           <p className="mt-2 text-sm">Loading requests…</p>
@@ -528,7 +535,7 @@ export default function Home() {
           ))
         )}
       </section>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 admin-kpis">
         {[
           [t("totalTonnes"), `${impact?.tonnes ?? 0} t`],
           [t("co2"), `${(impact?.co2Avoided ?? 0).toFixed(1)} t`],
@@ -539,13 +546,13 @@ export default function Home() {
           [t("farmers"), impact?.farmers ?? 0],
           [t("companies"), impact?.companies ?? 0],
         ].map(([k, v]) => (
-          <div className="card" key={String(k)}>
+          <div className="card admin-kpi-card" key={String(k)}>
             <div className="text-sm">{k}</div>
             <b className="text-xl">{v}</b>
           </div>
         ))}
       </div>
-      <section className="card">
+      <section className="card admin-districts">
         <h2 className="text-lg font-bold">{t("districtBreakdown")}</h2>
         {(Object.entries(impact?.byDistrict ?? {}) as [string, number][]).map(
           ([d, n]) => (
@@ -556,7 +563,7 @@ export default function Home() {
           ),
         )}
       </section>
-      <section className="card">
+      <section className="card admin-listings">
         <h2 className="text-lg font-bold">{t("listings")}</h2>
         {ll ? (
           <p>{t("loading")}</p>
@@ -822,7 +829,7 @@ function AddForm({
     [notes, setN] = useState("");
   return (
     <form
-      className="card"
+      className="card data-form"
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit({
@@ -915,7 +922,7 @@ function AddForm({
           onChange={(e) => setN(e.target.value)}
         />
       </label>
-      <div className="flex gap-2">
+      <div className="flex gap-2 form-actions">
         <button type="button" className="secondary flex-1" onClick={onCancel}>
           ←
         </button>
@@ -954,7 +961,7 @@ function DemandForm({
     );
   return (
     <form
-      className="card"
+      className="card data-form"
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit({
@@ -1057,7 +1064,7 @@ function DemandForm({
           onChange={(e) => setT(e.target.value)}
         />
       </label>
-      <div className="flex gap-2">
+      <div className="flex gap-2 form-actions">
         <button type="button" className="secondary flex-1" onClick={onCancel}>
           ←
         </button>
