@@ -474,7 +474,17 @@ export default function Home() {
         )}
       </>,
     );
-  if (page === "buyer")
+  if (page === "buyer") {
+    const totalRequested = myDemands.reduce((sum, demand) => sum + demand.tonnesNeeded, 0);
+    const matchedSupply = myDemands.reduce((sum, demand) => {
+      const committed = (matches ?? []).filter((match) => match.demandId === demand.id).reduce((tonnes, match) => {
+        const listing = (listings ?? []).find((item) => item.id === match.listingId);
+        return tonnes + (listing?.estimatedTonnes ?? 0);
+      }, 0);
+      return sum + Math.min(demand.tonnesNeeded, committed);
+    }, 0);
+    const stillNeeded = Math.max(0, totalRequested - matchedSupply);
+    const matchProgress = totalRequested ? Math.min(100, (matchedSupply / totalRequested) * 100) : 0;
     return frame(
       <>
         <section className="card dashboard-hero buyer-hero">
@@ -493,15 +503,16 @@ export default function Home() {
             ＋ {t("postDemand")}
           </button>
         </section>
-        <section className="card buyer-region-card">
-          <div className="buyer-region-heading"><span className="buyer-region-pin" aria-hidden="true">⌖</span><span><small>{t("sourcingBase")}</small><b>{user.district}</b><span>{user.state}</span></span></div>
-          <div className="buyer-region-art" role="img" aria-label={`Illustration of a local sourcing region near ${user.district}`}>
-            <span className="region-orbit region-orbit-one"/><span className="region-orbit region-orbit-two"/>
-            <span className="region-sun"/><span className="region-marker">⌖</span>
-            <span className="region-field region-field-back"/><span className="region-field region-field-front"/>
-            <span className="region-road"/>
+        <section className="card buyer-sourcing-card">
+          <div className="buyer-sourcing-heading"><span className="buyer-sourcing-icon" aria-hidden="true">↗</span><div><span>{t("sourcingOverview")}</span><small>{user.district} · {user.state}</small></div></div>
+          <div className="buyer-sourcing-total"><b>{totalRequested.toLocaleString("en-IN")}</b><span>{t("tonnesRequested")}</span></div>
+          <div className="buyer-sourcing-progress"><div><span>{t("matchProgress")}</span><b>{Math.round(matchProgress)}%</b></div><div className="buyer-sourcing-track" role="meter" aria-label={t("matchProgress")} aria-valuemin={0} aria-valuemax={totalRequested || 1} aria-valuenow={matchedSupply}><i style={{ width: `${matchProgress}%` }}/></div></div>
+          <div className="buyer-sourcing-breakdown">
+            <div><span className="sourcing-dot sourcing-dot-matched"/><span>{t("matchedSupply")}</span><b>{matchedSupply.toLocaleString("en-IN")} t</b></div>
+            <div><span className="sourcing-dot sourcing-dot-needed"/><span>{t("stillNeeded")}</span><b>{stillNeeded.toLocaleString("en-IN")} t</b></div>
           </div>
-          <div className="buyer-region-footer"><div><b>{myDemands.length}</b><span>{t(myDemands.length === 1 ? "activeRequests" : "activeRequestsPlural")}</span></div><span className="verified-badge">✓ {t("businessApproved")}</span></div>
+          <div className="buyer-sourcing-footer"><span className="verified-badge">✓ {t("businessApproved")}</span><span>{myDemands.length} {t(myDemands.length === 1 ? "activeRequests" : "activeRequestsPlural")}</span></div>
+          {myDemands.length === 0 && <button className="buyer-sourcing-empty" onClick={() => setPage("demand")}>{t("startSourcing")} <span aria-hidden="true">→</span></button>}
         </section>
         {dl ? (
           <div className="card">{t("loading")}</div>
@@ -553,6 +564,7 @@ export default function Home() {
         )}
       </>,
     );
+  }
   if (page === "demand")
     return frame(
       <DemandForm
