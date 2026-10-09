@@ -7,7 +7,7 @@ frontend:
     build:
       commands:
         - echo 'USE_AWS=true' > .env.production
-        - printenv | grep -E '^(BEDROCK_MODEL_ID|DYNAMO_USERS_TABLE|DYNAMO_LISTINGS_TABLE|DYNAMO_DEMANDS_TABLE|DYNAMO_MATCHES_TABLE)=' >> .env.production || true
+        - printenv | grep -E '^(AWS_REGION|BEDROCK_MODEL_ID|DYNAMO_USERS_TABLE|DYNAMO_LISTINGS_TABLE|DYNAMO_DEMANDS_TABLE|DYNAMO_MATCHES_TABLE|ADMIN_RECOVERY_KEY)=' >> .env.production || true
         - npm run build
   artifacts:
     baseDirectory: .next

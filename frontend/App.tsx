@@ -52,7 +52,12 @@ export default function Home() {
     [msg, setMsg] = useState(""),
     [busy, setBusy] = useState(false),
     [mobileNavOpen, setMobileNavOpen] = useState(false),
-    [fresh, setFresh] = useState(0);
+    [fresh, setFresh] = useState(0),
+    [adminQuery, setAdminQuery] = useState(""),
+    [adminStatus, setAdminStatus] = useState("all"),
+    [showApprovalHistory, setShowApprovalHistory] = useState(false),
+    [showOnboarding, setShowOnboarding] = useState(false),
+    [profileCard, setProfileCard] = useState<any>(null);
   const t = (k: string) => tr(lang, k),
     user =
       currentUser ?? seedUsers.find((u) => u.id === userId) ?? seedUsers[0];
@@ -68,6 +73,9 @@ export default function Home() {
       })
       .catch(() => {});
   }, []);
+  useEffect(() => {
+    if (currentUser && typeof window !== "undefined" && !localStorage.getItem(`harvestloop-onboarding-${currentUser.role}`)) setShowOnboarding(true);
+  }, [currentUser]);
   const {
       data: listings,
       error: le,
@@ -84,9 +92,35 @@ export default function Home() {
     { data: impact } = useApi<any>("/api/impact?" + fresh),
     { data: pendingCompanies, refresh: refreshPending } = useApi<User[]>(
       "/api/admin/approvals?" + fresh,
-    );
+    ),
+    { data: approvalHistory, refresh: refreshApprovalHistory } = useApi<any[]>(
+      "/api/admin/approvals/history?" + fresh,
+    ),
+    { data: adminUsers } = useApi<User[]>("/api/admin/users?" + fresh);
   const myListings = (listings ?? []).filter((x) => x.farmerId === user.id);
   const myDemands = (demands ?? []).filter((x) => x.buyerId === user.id);
+  const adminVisibleListings = useMemo(() => {
+    const query = adminQuery.trim().toLocaleLowerCase();
+    return (listings ?? []).filter((listing) => {
+      const owner = (adminUsers ?? seedUsers).find((candidate) => candidate.id === listing.farmerId);
+      const matchesQuery = !query || [owner?.name, owner?.district, listing.crop, listing.notes].some(value => value?.toLocaleLowerCase().includes(query));
+      return matchesQuery && (adminStatus === "all" || listing.status === adminStatus);
+    });
+  }, [listings, adminUsers, adminQuery, adminStatus]);
+  const openProfile = async (id: string) => {
+    try {
+      const response = await fetch(`/api/profiles/${encodeURIComponent(id)}`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? t("error"));
+      setProfileCard(result);
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : t("error"));
+    }
+  };
+  const closeOnboarding = () => {
+    if (currentUser && typeof window !== "undefined") localStorage.setItem(`harvestloop-onboarding-${currentUser.role}`, "done");
+    setShowOnboarding(false);
+  };
   const goOffers = async (l: Listing) => {
     setSelected(l);
     setPage("offers");
@@ -145,10 +179,10 @@ export default function Home() {
         <button
           onClick={() => { setPage(currentUser ? role : "home"); setMobileNavOpen(false); }}
           className="brand-lockup"
-          aria-label="KhetLoop home"
+          aria-label="HarvestLoop home"
         >
-          <span className="brand-symbol" aria-hidden="true">K</span>
-          <span className="brand-words"><b>KhetLoop</b><small>Harvest value, kept local</small></span>
+          <span className="brand-symbol" aria-hidden="true">H</span>
+          <span className="brand-words"><b>HarvestLoop</b><small>Harvest value, kept local</small></span>
         </button>
         <button
           className="mobile-menu-toggle"
@@ -224,12 +258,20 @@ export default function Home() {
     <main className={`app-shell page-${page} mx-auto min-h-screen bg-[#f4f7ef]`}>
       {header}
       <div className={`app-content app-content-${page} space-y-4 p-4`}>
+        {showOnboarding && currentUser && page !== "home" && page !== "auth" && (
+          <section className="card onboarding-guide" aria-label={t("gettingStarted")}>
+            <div><span className="section-kicker">{t("gettingStarted")}</span><h2>{t("welcomeName").replace("{name}", currentUser.name)}</h2><p>{t("onboardingIntro")}</p></div>
+            <ol><li>{t("onboardingStepOne").replace("{role}", currentUser.role === "farmer" ? t("farmer") : currentUser.role === "buyer" ? t("buyer") : t("admin"))}</li><li>{t("onboardingStepTwo")}</li><li>{t("onboardingStepThree")}</li></ol>
+            <button className="secondary onboarding-dismiss" onClick={closeOnboarding}>{t("gotIt")}</button>
+          </section>
+        )}
         {msg && page !== "auth" && (
           <div role="status" className="card border-amber-300 text-amber-900">
             {msg}
           </div>
         )}
         {children}
+        {profileCard && <div className="profile-backdrop" role="presentation" onClick={() => setProfileCard(null)}><section className="card profile-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-dialog-title" onClick={event => event.stopPropagation()}><button className="profile-close" aria-label={t("close")} onClick={() => setProfileCard(null)}>×</button><span className="section-kicker">{t("marketplaceProfile")}</span><h2 id="profile-dialog-title">{profileCard.name}</h2><p>{profileCard.role === "buyer" ? t("buyer") : t("farmer")} · {profileCard.district}, {profileCard.state}</p>{profileCard.businessApproved && <span className="verified-badge">✓ {t("businessApproved")}</span>}<dl><dt>{t("phone")}</dt><dd><a href={`tel:${profileCard.phone}`}>{profileCard.phone || t("notProvided")}</a></dd><dt>{t("village")}</dt><dd>{profileCard.village}</dd></dl><small>{t("contactSharedAfterMatch")}</small></section></div>}
       </div>
     </main>
   );
@@ -277,6 +319,10 @@ export default function Home() {
             setFresh((x) => x + 1);
           } else if (result?.pending) setMsg(result.message);
         }}
+        onRecover={async (phone, password, recoveryKey) => {
+          const result = await post("/api/auth/admin-recovery", { phone, password, recoveryKey });
+          if (result?.ok) setMsg(t("adminPasswordReset"));
+        }}
       />,
     );
   if (page === "farmer")
@@ -301,6 +347,7 @@ export default function Home() {
             ＋ {t("addResidue")}
           </button>
         </section>
+        <section className="card profile-summary"><span className="user-avatar">{user.name.slice(0,1).toUpperCase()}</span><div><b>{user.name}</b><small>{user.phone} · {user.district}, {user.state}</small></div><span className="profile-privacy">{t("contactPrivateUntilMatch")}</span></section>
         <section className="card farmer-earnings">
           <b>{t("totalEarned")}</b>
           <div className="mt-1 text-2xl font-bold">
@@ -332,26 +379,16 @@ export default function Home() {
         ) : !myListings.length ? (
           <div className="card">{t("empty")}</div>
         ) : (
-          myListings.map((l) => (
-            <button
-              key={l.id}
-              className="card listing-card w-full text-left"
-              onClick={() => goOffers(l)}
-            >
-              <div className="flex justify-between">
-                <b>
-                  {t(l.crop)} · {l.estimatedTonnes} t
-                </b>
-                {status(l.status)}
-              </div>
-              <div className="mt-2 text-sm text-slate-600">
-                {l.acres} acres · {l.availableFrom}
-              </div>
-              <span className="mt-2 inline-block text-green-800">
-                {t("offers")} →
-              </span>
-            </button>
-          ))
+          myListings.map((l) => {
+            const match = (matches ?? []).find(item => item.listingId === l.id);
+            const demand = match && (demands ?? []).find(item => item.id === match.demandId);
+            return <article key={l.id} className="card listing-card farmer-listing-item">
+              <div className="flex justify-between"><b>{t(l.crop)} · {l.estimatedTonnes} t</b>{status(l.status)}</div>
+              <div className="mt-2 text-sm text-slate-600">{l.acres} acres · {l.availableFrom}</div>
+              <div className="farmer-listing-actions"><button className="secondary" onClick={() => goOffers(l)}>{t("offers")} →</button>{demand && <button className="profile-action" onClick={() => openProfile(demand.buyerId)}>{t("buyerProfile")}</button>}</div>
+              {match && <MatchTimeline match={match} t={t} />}
+            </article>;
+          })
         )}
       </>,
     );
@@ -456,6 +493,7 @@ export default function Home() {
             ＋ {t("postDemand")}
           </button>
         </section>
+        <section className="card profile-summary"><span className="user-avatar">{user.name.slice(0,1).toUpperCase()}</span><div><b>{user.name}</b><small>{user.phone} · {user.district}, {user.state}</small></div><span className="verified-badge">✓ {t("businessApproved")}</span></section>
         {dl ? (
           <div className="card">{t("loading")}</div>
         ) : de ? (
@@ -466,9 +504,7 @@ export default function Home() {
           <div className="card">{t("empty")}</div>
         ) : (
           myDemands.map((d) => {
-            const matched = (listings ?? []).filter(
-              (l) => d.acceptedResidues.includes(l.crop) && l.status === "open",
-            );
+            const matched = (listings ?? []).filter((l) => d.acceptedResidues.includes(l.crop) && (l.status === "open" || (matches ?? []).some(match => match.listingId === l.id && match.demandId === d.id)));
             return (
               <div className="card demand-card" key={d.id}>
                 <b>{d.company}</b>
@@ -480,12 +516,13 @@ export default function Home() {
                   matched.slice(0, 5).map((l) => (
                     <div
                       key={l.id}
-                      className="mt-2 flex items-center justify-between"
+                      className="buyer-match-row"
                     >
-                      <span>
+                      <span className="buyer-match-copy">
                         {l.crop} · {l.estimatedTonnes} t ·{" "}
-                        {seedUsers.find((u) => u.id === l.farmerId)?.district}
+                        {(adminUsers ?? seedUsers).find((u) => u.id === l.farmerId)?.district ?? l.district}
                       </span>
+                      <span className="buyer-match-actions">
                       <Pickup
                         match={(matches ?? []).find(
                           (m) => m.listingId === l.id && m.demandId === d.id,
@@ -493,6 +530,9 @@ export default function Home() {
                         t={t}
                         onChange={() => setFresh((x) => x + 1)}
                       />
+                      {(matches ?? []).some(match => match.listingId === l.id && match.demandId === d.id) && <button className="profile-action" onClick={() => openProfile(l.farmerId)}>{t("farmerProfile")}</button>}
+                      </span>
+                      {(matches ?? []).find(match => match.listingId === l.id && match.demandId === d.id) && <MatchTimeline match={(matches ?? []).find(match => match.listingId === l.id && match.demandId === d.id)!} t={t} />}
                     </div>
                   ))
                 ) : (
@@ -524,7 +564,7 @@ export default function Home() {
     <>
       <section className="card dashboard-hero admin-hero">
         <div className="admin-hero-copy">
-          <span className="dashboard-eyebrow">KHETLOOP · OPERATIONS</span>
+          <span className="dashboard-eyebrow">HARVESTLOOP · OPERATIONS</span>
           <h1 className="text-2xl font-bold">
             {t("admin")} dashboard
           </h1>
@@ -534,7 +574,7 @@ export default function Home() {
           </p>
           <span className="admin-live-status"><i /> Live programme overview</span>
         </div>
-        <button
+        {process.env.NODE_ENV !== "production" && <button
           className="secondary admin-reset"
           onClick={async () => {
             if (confirm("Reset all demo data?")) {
@@ -544,13 +584,14 @@ export default function Home() {
           }}
         >
           <span aria-hidden="true">↺</span> {t("reset")}
-        </button>
+        </button>}
       </section>
       <section className="card admin-approvals">
         <div className="admin-section-heading">
           <div><span className="admin-section-icon">✓</span><div><h2>Company approvals</h2><p>Review businesses before they join the marketplace.</p></div></div>
           <span className={`admin-count ${pendingCompanies?.length ? "has-pending" : ""}`}>{pendingCompanies?.length ?? "…"} pending</span>
         </div>
+        <button className="admin-history-toggle" onClick={() => { setShowApprovalHistory(value => !value); if (!showApprovalHistory) void refreshApprovalHistory(); }} aria-expanded={showApprovalHistory}>{showApprovalHistory ? t("hideApprovalHistory") : t("viewApprovalHistory")} <span>{showApprovalHistory ? "↑" : "↓"}</span></button>
         {!pendingCompanies ? (
           <div className="admin-empty"><span className="admin-empty-icon">◌</span><span>Loading approval requests…</span></div>
         ) : pendingCompanies.length === 0 ? (
@@ -573,6 +614,7 @@ export default function Home() {
                   });
                   if (r.ok) {
                     await refreshPending();
+                    await refreshApprovalHistory();
                     setMsg("Company approved.");
                   }
                 }}
@@ -582,6 +624,7 @@ export default function Home() {
             </div>
           ))
         )}
+        {showApprovalHistory && <div className="approval-history"><h3>{t("recentApprovals")}</h3>{!approvalHistory ? <p>{t("loading")}</p> : approvalHistory.length === 0 ? <p>{t("noApprovalHistory")}</p> : approvalHistory.slice(0, 8).map((record: any) => <div className="approval-history-row" key={record.user.id}><span className="admin-company-avatar">✓</span><span><b>{record.user.name}</b><small>{record.user.district} · {record.approvedAt ? new Date(record.approvedAt).toLocaleDateString(lang === "hi" ? "hi-IN" : lang === "pa" ? "pa-IN" : "en-IN") : t("approvalDateUnavailable")}</small></span><button className="profile-action" onClick={() => openProfile(record.user.id)}>{t("profile")}</button></div>)}</div>}
       </section>
       <div className="grid grid-cols-2 gap-3 admin-kpis">
         {[
@@ -593,7 +636,7 @@ export default function Home() {
             `₹${(impact?.rupeesPaid ?? 0).toLocaleString("en-IN")}`,
             "Value returned to farmers",
           ],
-          ["♧", t("farmers"), impact?.farmers ?? 0, "Registered on KhetLoop"],
+          ["♧", t("farmers"), impact?.farmers ?? 0, "Registered on HarvestLoop"],
           ["▦", t("companies"), impact?.companies ?? 0, "Marketplace buyers"],
         ].map(([icon, label, value, note]) => (
           <div className="card admin-kpi-card" key={String(label)}>
@@ -618,23 +661,27 @@ export default function Home() {
       </section>
       <section className="card admin-listings">
         <div className="admin-section-heading"><div><span className="admin-section-icon">▤</span><div><h2>Residue listings</h2><p>Monitor supply and update pickup progress.</p></div></div><span className="admin-listing-total">{listings?.length ?? 0} total</span></div>
+        <div className="admin-listing-filters"><label className="admin-search"><span aria-hidden="true">⌕</span><input aria-label={t("searchListings")} placeholder={t("searchListings")} value={adminQuery} onChange={event => setAdminQuery(event.target.value)} /></label><label><span className="sr-only">{t("filterStatus")}</span><select value={adminStatus} onChange={event => setAdminStatus(event.target.value)}><option value="all">{t("allStatuses")}</option>{["open","matched","pickup_scheduled","collected","paid"].map(value => <option value={value} key={value}>{t(`status_${value}`)}</option>)}</select></label></div>
         {ll ? (
           <p>{t("loading")}</p>
         ) : le ? (
           <p>{t("error")}</p>
         ) : (
-          (listings ?? []).map((l) => (
+          adminVisibleListings.map((l) => {
+            const owner = (adminUsers ?? seedUsers).find((candidate) => candidate.id === l.farmerId);
+            const listingMatches = (matches ?? []).filter((match) => match.listingId === l.id);
+            return (
             <div key={l.id} className="admin-listing-row">
               <div className="admin-listing-main">
                 <span className="admin-listing-icon">{l.crop === "wheat" ? "✳" : "❋"}</span>
-                <div className="admin-listing-copy"><b>{seedUsers.find((u) => u.id === l.farmerId)?.name ?? "Farmer"}</b><small>{l.crop} · {l.estimatedTonnes} tonnes · {seedUsers.find((u) => u.id === l.farmerId)?.district ?? "KhetLoop farmer"}</small></div>
+                <div className="admin-listing-copy"><b>{owner?.name ?? t("farmer")}</b><small>{l.crop} · {l.estimatedTonnes} tonnes · {owner?.district ?? l.district ?? t("districtNotSet")}</small></div>
                 {status(l.status)}
+                {owner && <button className="profile-action" onClick={() => openProfile(owner.id)}>{t("profile")}</button>}
               </div>
-              {(matches ?? [])
-                .filter((m) => m.listingId === l.id)
-                .map((m) => (
+              {listingMatches.map((m) => (
                   <div key={m.id} className="admin-match-row">
-                    <span className="admin-match-id">Match {m.id.slice(0, 8)}</span>
+                    <span className="admin-match-id">{t("match")} {m.id.slice(0, 8)} · ₹{m.agreedPricePerTonne.toLocaleString("en-IN")}/{t("perTonne")}</span>
+                    {demands?.find(demand => demand.id === m.demandId) && <button className="profile-action" onClick={() => openProfile(demands.find(demand => demand.id === m.demandId)!.buyerId)}>{t("buyerProfile")}</button>}
                     {m.status === "pickup_scheduled" && (
                       <button
                         className="secondary admin-action-button"
@@ -666,14 +713,21 @@ export default function Home() {
                       </button>
                     )}
                     {status(m.status)}
+                    <MatchTimeline match={m} t={t} />
                   </div>
                 ))}
             </div>
-          ))
+          )})
         )}
+        {!ll && !le && adminVisibleListings.length === 0 && <div className="admin-empty"><span className="admin-empty-icon">⌕</span><span><b>{t("noListingResults")}</b><small>{t("adjustFilters")}</small></span></div>}
       </section>
     </>,
   );
+}
+function MatchTimeline({match,t}:{match:Match;t:(key:string)=>string}){
+ const stages:Match["status"][]=["matched","pickup_scheduled","collected","paid"];
+ const current=stages.indexOf(match.status);
+ return <ol className="status-timeline" aria-label={t("pickupTimeline")}>{stages.map((stage,index)=>{const event=[...(match.statusHistory??[])].reverse().find(item=>item.status===stage);return <li className={index<=current?"is-complete":""} key={stage}><i aria-hidden="true"/><span><b>{t(`status_${stage}`)}</b><small>{event?new Date(event.at).toLocaleDateString():index===current?t("statusRecordedLegacy"):t("notStarted")}</small></span></li>;})}</ol>;
 }
 function LandingPage({
   impact,
@@ -690,14 +744,14 @@ function LandingPage({
         <div className="landing-copy">
           <span className="eyebrow-pill"><span></span> A LOCAL MARKETPLACE FOR CROP RESIDUE</span>
           <h1>Good for your farm.<br /><em>Better for the future.</em></h1>
-          <p>KhetLoop connects farmers with nearby buyers so leftover crop residue can become a valuable resource instead of going to waste.</p>
+          <p>HarvestLoop connects farmers with nearby buyers so leftover crop residue can become a valuable resource instead of going to waste.</p>
           <div className="landing-actions">
             <button className="primary landing-primary" onClick={onStart}>Get started <span aria-hidden="true">→</span></button>
             <button className="text-action" onClick={onAbout}>See how it works <span aria-hidden="true">↗</span></button>
           </div>
           <div className="landing-proof"><div className="proof-avatars"><span>F</span><span>B</span><span>↗</span></div><span>Farmers and buyers, working in the same loop</span></div>
         </div>
-        <div className="landing-art" aria-label="A preview of the KhetLoop crop residue marketplace" role="img">
+        <div className="landing-art" aria-label="A preview of the HarvestLoop crop residue marketplace" role="img">
           <div className="art-sun"></div><div className="art-field art-field-back"></div><div className="art-field art-field-front"></div>
           <div className="market-preview">
             <div className="preview-head"><span className="preview-mark">K</span><span><b>Residue marketplace</b><small>Opportunities near you</small></span><span className="preview-live">LIVE</span></div>
@@ -708,7 +762,7 @@ function LandingPage({
           <div className="art-note"><span>♻</span><span><b>Waste to worth</b><small>Keep resources moving</small></span></div>
         </div>
       </section>
-      <section className="impact-strip" aria-label="KhetLoop community impact">
+      <section className="impact-strip" aria-label="HarvestLoop community impact">
         <div><strong>{impact?.farmers ?? "—"}</strong><span>Farmers connected</span></div>
         <div><strong>{impact?.companies ?? "—"}</strong><span>Buyers on the loop</span></div>
         <div><strong>{impact?.tonnes ?? "—"} t</strong><span>Residue listed</span></div>
@@ -731,13 +785,13 @@ function AboutPage({ onStart }: { onStart: () => void }) {
   return (
     <div className="public-page info-page">
       <section className="info-hero">
-        <span className="section-kicker">ABOUT KHETLOOP</span>
+        <span className="section-kicker">ABOUT HARVESTLOOP</span>
         <h1>Turning a seasonal challenge into a shared opportunity.</h1>
-        <p>When crop residue has a clear destination, farmers and local businesses can both benefit. KhetLoop helps them find each other and make the next step easier.</p>
+        <p>When crop residue has a clear destination, farmers and local businesses can both benefit. HarvestLoop helps them find each other and make the next step easier.</p>
       </section>
       <section className="about-story">
-        <div className="story-mark">K</div>
-        <div><span className="section-kicker">WHY WE EXIST</span><h2>Keep value close to where it grows.</h2><p>Crop residue is a resource with many possible uses. KhetLoop brings local supply and buyer demand together in one place, helping communities move biomass toward useful products like compost, biofuel, and more.</p><p>Our goal is a practical one: make it easier to find a match, agree on the details, and coordinate collection.</p></div>
+        <div className="story-mark">H</div>
+        <div><span className="section-kicker">WHY WE EXIST</span><h2>Keep value close to where it grows.</h2><p>Crop residue is a resource with many possible uses. HarvestLoop brings local supply and buyer demand together in one place, helping communities move biomass toward useful products like compost, biofuel, and more.</p><p>Our goal is a practical one: make it easier to find a match, agree on the details, and coordinate collection.</p></div>
       </section>
       <section className="value-grid">
         <article className="value-card"><span>01</span><h3>Local by design</h3><p>Connections begin with nearby farmers, buyers, and collection windows.</p></article>
@@ -759,7 +813,7 @@ function ContactPage() {
         <p>Questions about a listing, a match, or your account? Choose the support path that fits your situation.</p>
       </section>
       <section className="contact-grid">
-        <article className="contact-card"><span className="contact-icon">✉</span><span className="section-kicker">GENERAL SUPPORT</span><h2>Talk to the KhetLoop team</h2>{email ? <><p>Send us a note and include your district and account type so we can help faster.</p><a className="contact-link" href={`mailto:${email}?subject=KhetLoop%20support`}>Email support <span aria-hidden="true">→</span></a></> : <><p>Direct support email has not been configured for this deployment yet.</p><small>For help with your account, contact the administrator who invited you.</small></>}</article>
+        <article className="contact-card"><span className="contact-icon">✉</span><span className="section-kicker">GENERAL SUPPORT</span><h2>Talk to the HarvestLoop team</h2>{email ? <><p>Send us a note and include your district and account type so we can help faster.</p><a className="contact-link" href={`mailto:${email}?subject=HarvestLoop%20support`}>Email support <span aria-hidden="true">→</span></a></> : <><p>Direct support email has not been configured for this deployment yet.</p><small>For help with your account, contact the administrator who invited you.</small></>}</article>
         <article className="contact-card contact-secondary"><span className="contact-icon">◎</span><span className="section-kicker">ACCOUNT APPROVAL</span><h2>Waiting for company approval?</h2><p>Company accounts need an administrator to approve them before sign-in. Your account details remain saved while you wait.</p><div className="contact-note">Tip: include your company name and registered phone number when asking about approval.</div></article>
         <article className="contact-card contact-secondary"><span className="contact-icon">⌖</span><span className="section-kicker">MARKETPLACE HELP</span><h2>Need help with a listing?</h2><p>Have your crop type, quantity, district, and listing status ready. These details help the team understand the issue quickly.</p></article>
       </section>
@@ -768,7 +822,7 @@ function ContactPage() {
   );
 }
 function PublicFooter({ onAbout }: { onAbout?: () => void }) {
-  return <footer className="public-footer"><span>© {new Date().getFullYear()} KhetLoop</span><span>Keep harvest value moving locally.</span>{onAbout && <button onClick={onAbout}>About KhetLoop</button>}</footer>;
+  return <footer className="public-footer"><span>© {new Date().getFullYear()} HarvestLoop</span><span>Keep harvest value moving locally.</span>{onAbout && <button onClick={onAbout}>About HarvestLoop</button>}</footer>;
 }
 function LoginView({
   lang,
@@ -776,6 +830,7 @@ function LoginView({
   message,
   onSignIn,
   onRegister,
+  onRecover,
 }: {
   lang: Language;
   busy: boolean;
@@ -788,26 +843,28 @@ function LoginView({
     password: string,
     district: string,
   ) => Promise<void>;
+  onRecover:(phone:string,password:string,recoveryKey:string)=>Promise<void>;
 }) {
-  const [mode, setMode] = useState<"login" | "register">("login"),
+  const [mode, setMode] = useState<"login" | "register" | "recover">("login"),
     [kind, setKind] = useState<"farmer" | "buyer">("farmer"),
     [name, setName] = useState(""),
     [phone, setPhone] = useState(""),
     [password, setPassword] = useState(""),
+    [recoveryKey, setRecoveryKey] = useState(""),
     [district, setDistrict] = useState("Ludhiana");
   const title =
     lang === "hi"
-      ? "खेतलूप में साइन इन करें"
+      ? "हार्वेस्टलूप में साइन इन करें"
       : lang === "pa"
-        ? "ਖੇਤਲੂਪ ਵਿੱਚ ਸਾਈਨ ਇਨ ਕਰੋ"
-        : "Sign in to KhetLoop";
+        ? "ਹਾਰਵੈਸਟਲੂਪ ਵਿੱਚ ਸਾਈਨ ਇਨ ਕਰੋ"
+        : "Sign in to HarvestLoop";
   return (
     <div className="login-layout">
       <section className="welcome-panel">
         <div className="welcome-kicker"><span className="welcome-icon">🌾</span> GROW · GATHER · REUSE</div>
         <h1>{title}</h1>
         <p className="welcome-copy">{tr(lang, "intro")}</p>
-        <div className="welcome-benefits" aria-label="KhetLoop benefits">
+        <div className="welcome-benefits" aria-label="HarvestLoop benefits">
           <div><span>01</span><p><b>Find nearby partners</b><small>Connect with farmers and buyers in your district.</small></p></div>
           <div><span>02</span><p><b>Make residue valuable</b><small>Turn leftover crop material into a useful resource.</small></p></div>
           <div><span>03</span><p><b>Keep it simple</b><small>Manage listings and offers from one place.</small></p></div>
@@ -816,11 +873,11 @@ function LoginView({
       </section>
       <section className="card auth-card">
         <div className="auth-heading">
-          <span className="auth-eyebrow">YOUR K H E T L O O P ACCOUNT</span>
-          <h2>{mode === "login" ? "Welcome back" : "Join the community"}</h2>
-          <p>{mode === "login" ? "Sign in to continue to your workspace." : "Create an account to get started."}</p>
+          <span className="auth-eyebrow">YOUR HARVESTLOOP ACCOUNT</span>
+          <h2>{mode === "login" ? "Welcome back" : mode === "recover" ? tr(lang,"resetAdminPassword") : "Join the community"}</h2>
+          <p>{mode === "login" ? "Sign in to continue to your workspace." : mode === "recover" ? tr(lang,"recoveryInstructions") : "Create an account to get started."}</p>
         </div>
-        <div className="mb-4 flex gap-2">
+        {mode !== "recover" && <div className="mb-4 flex gap-2">
           <button
             type="button"
             aria-pressed={mode === "login"}
@@ -839,11 +896,12 @@ function LoginView({
           >
             Create account
           </button>
-        </div>
+        </div>}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             if (mode === "login") void onSignIn(phone, password);
+            else if(mode === "recover") void onRecover(phone,password,recoveryKey);
             else void onRegister(kind, name, phone, password, district);
           }}
         >
@@ -901,7 +959,7 @@ function LoginView({
             />
           </label>
           <label>
-            Password
+            {mode === "recover" ? tr(lang,"newPassword") : tr(lang,"password")}
             <input
               className="field"
               type="password"
@@ -909,11 +967,12 @@ function LoginView({
                 mode === "login" ? "current-password" : "new-password"
               }
               required
-              minLength={6}
+              minLength={mode === "recover" ? 8 : 6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </label>
+          {mode === "recover" && <label>{tr(lang,"recoveryKey")}<input className="field" type="password" autoComplete="off" required value={recoveryKey} onChange={event=>setRecoveryKey(event.target.value)} /></label>}
           {message && (
             <p
               role="alert"
@@ -927,11 +986,13 @@ function LoginView({
               ? "Please wait…"
               : mode === "login"
                 ? "Sign in"
-                : kind === "farmer"
+                : mode === "recover" ? tr(lang,"resetAdminPassword") : kind === "farmer"
                   ? "Create farmer account"
                   : "Request company account"}
           </button>
         </form>
+        {mode === "login" && <button className="recovery-link" type="button" onClick={()=>setMode("recover")}>{tr(lang,"forgotAdminPassword")}</button>}
+        {mode !== "login" && <button className="recovery-link" type="button" onClick={()=>setMode("login")}>{tr(lang,"backToSignIn")}</button>}
         {mode === "login" && (
           <div className="demo-credentials mt-4 rounded-lg p-3 text-sm">
             <b>Exploring the demo?</b>
@@ -939,7 +1000,6 @@ function LoginView({
             <details>
               <summary>Show demo sign-in details</summary>
               <div className="demo-details">
-                <p>Admin: +91 90000 0000 · admin123</p>
                 <p>Farmer: +91 98765 4300 · farmer123</p>
                 <p>Seed companies: +91 90000 1001–1006 · company123</p>
               </div>

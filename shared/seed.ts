@@ -5,8 +5,8 @@ const farmerSpecs = [
  ] as const;
 export const seedUsers: User[] = [
  ...farmerSpecs.map(([district,name],i)=>{const l=LOCATIONS.find(x=>x.district===district)!; return {id:`farmer-${i+1}`,role:'farmer' as const,name,phone:`+91 98765 43${String(i).padStart(2,'0')}`,language:'en' as const,village:district,district,state:l.state,lat:l.lat+(i%3-1)*.025,lng:l.lng+(i%2?-.02:.02)}}),
- ...['Punjab Pellets Co.','GreenGas Bio-CNG','Mittal Compost Works','SoilSpark Biochar','North Dairy Cooperative','Haryana Power Co-firing'].map((name,i)=>{const l=LOCATIONS[i]; return {id:`buyer-${i+1}`,role:'buyer' as const,name,phone:'',language:'en' as const,village:l.district,district:l.district,state:l.state,lat:l.lat,lng:l.lng}}),
- {id:'admin-1',role:'admin',name:'KhetLoop Admin',phone:'',language:'en',village:'Ludhiana',district:'Ludhiana',state:'Punjab',lat:30.901,lng:75.857},
+ ...(['Punjab Pellets Co.','GreenGas Bio-CNG','Mittal Compost Works','SoilSpark Biochar','North Dairy Cooperative','Haryana Power Co-firing'] as const).map((name,i)=>{const district=['Ludhiana','Sangrur','Patiala','Karnal','Kurukshetra','Meerut'][i],l=LOCATIONS.find(x=>x.district===district)!; return {id:`buyer-${i+1}`,role:'buyer' as const,name,phone:'',language:'en' as const,village:l.district,district:l.district,state:l.state,lat:l.lat,lng:l.lng}}),
+ {id:'admin-1',role:'admin',name:'HarvestLoop Admin',phone:'',language:'en',village:'Ludhiana',district:'Ludhiana',state:'Punjab',lat:30.901,lng:75.857},
 ];
 const listingFarmerIndexes=[0,3,6,9,12,14,1,10];
 export const seedListings: Listing[] = Array.from({length:8},(_,i)=>{const farmer=seedUsers[listingFarmerIndexes[i]], crop=i===4||i===6?'wheat':'paddy', acres=[12,8,15,10,7,18,9,14][i]; const day=String(i+10).padStart(2,'0'); return {id:`listing-${i+1}`,farmerId:farmer.id,crop,acres,estimatedTonnes:acres*(crop==='paddy'?2:1.6),harvestDate:`2026-10-${day}`,availableFrom:`2026-10-${day}`,availableTo:'2026-11-30',lat:farmer.lat,lng:farmer.lng,notes:'Demo listing',status:i===0?'collected':i===1?'paid':'open'};});

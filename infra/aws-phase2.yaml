@@ -23,6 +23,8 @@ Resources:
     Properties:
       TableName: !Ref UsersTableName
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
@@ -58,6 +60,8 @@ Resources:
     Properties:
       TableName: !Ref ListingsTableName
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
@@ -69,6 +73,8 @@ Resources:
     Properties:
       TableName: !Ref DemandsTableName
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
@@ -80,6 +86,8 @@ Resources:
     Properties:
       TableName: !Ref MatchesTableName
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
