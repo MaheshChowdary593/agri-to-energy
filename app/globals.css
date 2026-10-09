@@ -425,6 +425,18 @@ label .field { font-weight: 400; }
 .buyer-sourcing-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
 .buyer-sourcing-footer > span:last-child { color: #7c877c; font-size: .7rem; }
 .buyer-sourcing-empty { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px dashed #d8e2d2; border-radius: 11px; background: #f5f8f1; color: #3b6947; font-size: .78rem; font-weight: 700; }
+.header-profile-button { display: inline-flex; min-width: 0; align-items: center; gap: 8px; padding: 4px 7px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: #304337; font-weight: 650; text-align: left; }
+.header-profile-button:hover { border-color: #e5eadf; background: #f4f6f0; }
+.header-profile-caret { color: #7a867a; font-size: .75rem; }
+.profile-settings-card { width: min(100%, 760px); margin-inline: auto; padding: clamp(22px, 4vw, 38px); border-color: #e4e9df; box-shadow: 0 12px 34px rgb(35 62 39 / 7%); }
+.profile-settings-heading { display: flex; align-items: center; gap: 16px; margin-bottom: 27px; padding-bottom: 22px; border-bottom: 1px solid #edf0e9; }
+.profile-settings-heading h1 { margin: 3px 0; color: #23432e; font-size: clamp(1.35rem, 3vw, 1.8rem); letter-spacing: -.045em; }
+.profile-settings-heading p { margin: 0; color: #7a8579; font-size: .8rem; }
+.profile-settings-avatar { width: 54px; height: 54px; flex: 0 0 54px; font-size: 1.2rem; }
+.profile-settings-form { display: grid; gap: 17px; }
+.profile-settings-form label { display: grid; gap: 6px; color: #46584a; font-size: .79rem; font-weight: 700; }
+.profile-settings-form label small { color: #7c887b; font-size: .71rem; font-weight: 450; }
+.profile-settings-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; padding-top: 18px; border-top: 1px solid #edf0e9; }
 .verified-badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 99px; background: #edf5e9; color: #45734b; font-size: .69rem; font-weight: 750; }
 .onboarding-guide { position: relative; display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.3fr) auto; align-items: center; gap: 20px; border-color: #dce6d2; background: linear-gradient(115deg, #f4f7ed, #fff); }
 .onboarding-guide h2 { margin: 4px 0; color: #2a4c35; font-size: 1.05rem; }

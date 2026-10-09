@@ -225,8 +225,11 @@ export default function Home() {
             </select>
             {currentUser ? (
               <div className="signed-in-user">
-                <span className="user-avatar">{currentUser.name.slice(0, 1).toUpperCase()}</span>
-                <span className="header-user-name">{currentUser.name}</span>
+                <button className="header-profile-button" title={t("profileSettings")} onClick={() => { setPage("settings"); setMsg(""); setMobileNavOpen(false); }}>
+                  <span className="user-avatar">{currentUser.name.slice(0, 1).toUpperCase()}</span>
+                  <span className="header-user-name">{currentUser.name}</span>
+                  <span className="header-profile-caret" aria-hidden="true">⌄</span>
+                </button>
                 <button
                   className="primary header-signout"
                   title="Sign out"
@@ -324,6 +327,31 @@ export default function Home() {
           if (result?.ok) setMsg(t("adminPasswordReset"));
         }}
       />,
+    );
+  if (page === "settings")
+    return frame(
+      <ProfileSettings
+        user={currentUser ?? user}
+        busy={busy}
+        t={t}
+        onCancel={() => { setPage(role); setMsg(""); }}
+        onSubmit={async (profile) => {
+          setBusy(true);
+          setMsg("");
+          try {
+            const response = await fetch("/api/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile) });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error ?? t("error"));
+            setCurrentUser(result.user);
+            setFresh((value) => value + 1);
+            setMsg(t("profileUpdated"));
+          } catch (error) {
+            setMsg(error instanceof Error ? error.message : t("error"));
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
     );
   if (page === "farmer")
     return frame(
@@ -1032,6 +1060,38 @@ function LoginView({
     </div>
   );
 }
+function ProfileSettings({
+  user,
+  busy,
+  t,
+  onCancel,
+  onSubmit,
+}: {
+  user: User;
+  busy: boolean;
+  t: (key: string) => string;
+  onCancel: () => void;
+  onSubmit: (profile: { name: string; phone: string; village: string }) => void;
+}) {
+  const [name, setName] = useState(user.name),
+    [phone, setPhone] = useState(user.phone),
+    [village, setVillage] = useState(user.village);
+  return (
+    <section className="card profile-settings-card">
+      <div className="profile-settings-heading">
+        <span className="user-avatar profile-settings-avatar">{name.slice(0, 1).toUpperCase()}</span>
+        <div><span className="section-kicker">{t("profileSettings")}</span><h1>{t("editProfile")}</h1><p>{user.district}, {user.state}</p></div>
+      </div>
+      <form className="profile-settings-form" onSubmit={(event) => { event.preventDefault(); onSubmit({ name, phone, village }); }}>
+        <label>{t("name")}<input className="field" autoComplete="name" required minLength={2} maxLength={100} value={name} onChange={(event) => setName(event.target.value)} /></label>
+        <label>{t("phone")}<input className="field" type="tel" inputMode="tel" autoComplete="tel" required minLength={8} maxLength={20} value={phone} onChange={(event) => setPhone(event.target.value)} /><small>{t("phoneUsedToSignIn")}</small></label>
+        <label>{t("village")}<input className="field" autoComplete="address-level2" required minLength={2} maxLength={100} value={village} onChange={(event) => setVillage(event.target.value)} /></label>
+        <div className="profile-settings-actions"><button type="button" className="secondary" onClick={onCancel}>{t("cancel")}</button><button className="primary" disabled={busy}>{busy ? t("savingChanges") : t("saveChanges")}</button></div>
+      </form>
+    </section>
+  );
+}
+
 function AddForm({
   user,
   lang,
