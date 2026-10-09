@@ -402,6 +402,26 @@ label .field { font-weight: 400; }
 .profile-summary > div b { overflow: hidden; color: #304a36; font-size: .84rem; text-overflow: ellipsis; white-space: nowrap; }
 .profile-summary > div small { color: #778276; font-size: .72rem; }
 .profile-privacy { color: #788477; font-size: .69rem; text-align: right; }
+.buyer-region-card { position: relative; display: flex; min-height: 420px; flex-direction: column; overflow: hidden; padding: 25px; border-color: #e4e8dc; background: linear-gradient(155deg, #fff 0%, #fbfcf8 48%, #f1f4e9 100%); }
+.buyer-region-heading { z-index: 1; display: flex; align-items: center; gap: 13px; }
+.buyer-region-heading > span:last-child { display: grid; gap: 1px; }
+.buyer-region-heading small { color: #81907c; font-size: .62rem; font-weight: 800; letter-spacing: .13em; }
+.buyer-region-heading b { color: #234530; font-size: 1.3rem; letter-spacing: -.04em; }
+.buyer-region-heading > span:last-child > span { color: #788578; font-size: .76rem; }
+.buyer-region-pin { display: grid; width: 46px; height: 46px; place-items: center; border: 1px solid #e1e9d9; border-radius: 15px; background: #f0f4e9; color: #47744d; font-size: 1.4rem; }
+.buyer-region-art { position: relative; flex: 1; min-height: 210px; margin: 15px -8px 10px; overflow: hidden; border-radius: 18px; background: linear-gradient(180deg, #e7f0e9 0%, #f5f5e9 65%, #e5e8d4 100%); }
+.region-sun { position: absolute; top: 18%; right: 18%; width: 44px; height: 44px; border-radius: 50%; background: #e6cf8c; box-shadow: 0 0 0 11px rgb(230 207 140 / 20%), 0 0 0 23px rgb(230 207 140 / 10%); }
+.region-orbit { position: absolute; z-index: 1; top: 16%; left: 50%; width: 150px; height: 150px; border: 1px solid rgb(58 111 74 / 19%); border-radius: 50%; transform: translateX(-50%); }
+.region-orbit-two { top: 4%; width: 220px; height: 220px; border-color: rgb(58 111 74 / 12%); }
+.region-marker { position: absolute; z-index: 3; top: 34%; left: 50%; display: grid; width: 44px; height: 44px; place-items: center; border: 4px solid #fff; border-radius: 50% 50% 50% 5px; background: #326849; color: white; box-shadow: 0 6px 14px rgb(34 74 45 / 25%); font-size: 1.3rem; transform: translate(-50%,-50%) rotate(-45deg); }
+.region-marker::first-letter { transform: rotate(45deg); }
+.region-field { position: absolute; right: -9%; bottom: -36%; left: -9%; height: 74%; border-radius: 48% 52% 0 0 / 28% 35% 0 0; background: repeating-linear-gradient(165deg, transparent 0 18px, rgb(58 98 54 / 17%) 19px 21px), #829468; transform: rotate(-5deg); }
+.region-field-front { right: -13%; bottom: -49%; left: 22%; height: 79%; background: repeating-linear-gradient(167deg, transparent 0 18px, rgb(47 81 45 / 15%) 19px 21px), #a9a875; transform: rotate(5deg); }
+.region-road { position: absolute; z-index: 2; right: -5%; bottom: 15%; left: -5%; height: 25px; border-top: 2px dashed rgb(255 255 255 / 72%); border-radius: 50%; transform: rotate(-8deg); }
+.buyer-region-footer { z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 13px; border-top: 1px solid #e8ece3; }
+.buyer-region-footer > div { display: grid; gap: 1px; }
+.buyer-region-footer > div b { color: #2f6644; font-size: 1.2rem; line-height: 1.15; }
+.buyer-region-footer > div span { color: #788478; font-size: .7rem; }
 .verified-badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 99px; background: #edf5e9; color: #45734b; font-size: .69rem; font-weight: 750; }
 .onboarding-guide { position: relative; display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.3fr) auto; align-items: center; gap: 20px; border-color: #dce6d2; background: linear-gradient(115deg, #f4f7ed, #fff); }
 .onboarding-guide h2 { margin: 4px 0; color: #2a4c35; font-size: 1.05rem; }

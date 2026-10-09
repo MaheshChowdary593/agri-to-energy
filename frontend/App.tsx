@@ -493,7 +493,16 @@ export default function Home() {
             ＋ {t("postDemand")}
           </button>
         </section>
-        <section className="card profile-summary"><span className="user-avatar">{user.name.slice(0,1).toUpperCase()}</span><div><b>{user.name}</b><small>{user.phone} · {user.district}, {user.state}</small></div><span className="verified-badge">✓ {t("businessApproved")}</span></section>
+        <section className="card buyer-region-card">
+          <div className="buyer-region-heading"><span className="buyer-region-pin" aria-hidden="true">⌖</span><span><small>{t("sourcingBase")}</small><b>{user.district}</b><span>{user.state}</span></span></div>
+          <div className="buyer-region-art" role="img" aria-label={`Illustration of a local sourcing region near ${user.district}`}>
+            <span className="region-orbit region-orbit-one"/><span className="region-orbit region-orbit-two"/>
+            <span className="region-sun"/><span className="region-marker">⌖</span>
+            <span className="region-field region-field-back"/><span className="region-field region-field-front"/>
+            <span className="region-road"/>
+          </div>
+          <div className="buyer-region-footer"><div><b>{myDemands.length}</b><span>{t(myDemands.length === 1 ? "activeRequests" : "activeRequestsPlural")}</span></div><span className="verified-badge">✓ {t("businessApproved")}</span></div>
+        </section>
         {dl ? (
           <div className="card">{t("loading")}</div>
         ) : de ? (
