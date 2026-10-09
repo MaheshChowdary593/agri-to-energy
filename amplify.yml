@@ -3,7 +3,7 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm ci
+        - npm ci --legacy-peer-deps
     build:
       commands:
         - printenv | grep -E '^(USE_AWS|BEDROCK_MODEL_ID|DYNAMO_USERS_TABLE|DYNAMO_LISTINGS_TABLE|DYNAMO_DEMANDS_TABLE|DYNAMO_MATCHES_TABLE)=' >> .env.production || true
