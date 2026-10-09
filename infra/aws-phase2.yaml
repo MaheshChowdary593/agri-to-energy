@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: KhetLoop Phase 2 DynamoDB tables and least-privilege Amplify SSR compute role.
+Parameters:
+  UsersTableName:
+    Type: String
+    Default: KhetLoopUsers
+  ListingsTableName:
+    Type: String
+    Default: KhetLoopListings
+  DemandsTableName:
+    Type: String
+    Default: KhetLoopDemands
+  MatchesTableName:
+    Type: String
+    Default: KhetLoopMatches
+  BedrockModelArn:
+    Type: String
+    Description: Exact Bedrock foundation model or inference profile ARN used by BEDROCK_MODEL_ID.
+Resources:
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref UsersTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: phone
+          AttributeType: S
+        - AttributeName: role
+          AttributeType: S
+        - AttributeName: approvalStatus
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: PhoneIndex
+          KeySchema:
+            - AttributeName: phone
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: RoleApprovalIndex
+          KeySchema:
+            - AttributeName: role
+              KeyType: HASH
+            - AttributeName: approvalStatus
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+  ListingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref ListingsTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+  DemandsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref DemandsTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+  MatchesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref MatchesTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+  AmplifyComputeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-AmplifyCompute'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: amplify.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: KhetLoopRuntimeAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: KhetLoopTableAccess
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:BatchWriteItem
+                Resource:
+                  - !GetAtt UsersTable.Arn
+                  - !Sub '${UsersTable.Arn}/index/*'
+                  - !GetAtt ListingsTable.Arn
+                  - !GetAtt DemandsTable.Arn
+                  - !GetAtt MatchesTable.Arn
+              - Sid: InvokeConfiguredBedrockModel
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource: !Ref BedrockModelArn
+Outputs:
+  AmplifyComputeRoleArn:
+    Description: Attach this role as the Amplify app's SSR Compute role.
+    Value: !GetAtt AmplifyComputeRole.Arn
+  UsersTableName:
+    Value: !Ref UsersTable
+  ListingsTableName:
+    Value: !Ref ListingsTable
+  DemandsTableName:
+    Value: !Ref DemandsTable
+  MatchesTableName:
+    Value: !Ref MatchesTable
