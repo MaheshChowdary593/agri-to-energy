@@ -1,4 +1,4 @@
-import {DynamoStore} from '../src/backend/dynamo-store';
+import {DynamoStore} from '../backend/dynamo-store';
 
 if(process.env.USE_AWS!=='true')throw new Error('Set USE_AWS=true before running this seed script.');
 if(!process.env.AWS_REGION&&!process.env.AWS_DEFAULT_REGION)throw new Error('Set AWS_REGION first.');
