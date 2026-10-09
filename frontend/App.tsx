@@ -345,6 +345,7 @@ export default function Home() {
             setCurrentUser(result.user);
             setFresh((value) => value + 1);
             setMsg(t("profileUpdated"));
+            setPage(result.user.role);
           } catch (error) {
             setMsg(error instanceof Error ? error.message : t("error"));
           } finally {
