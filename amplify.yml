@@ -6,7 +6,7 @@ frontend:
         - npm ci
     build:
       commands:
-        - printenv | grep -E '^(USE_AWS|AWS_REGION|BEDROCK_MODEL_ID|DYNAMO_USERS_TABLE|DYNAMO_LISTINGS_TABLE|DYNAMO_DEMANDS_TABLE|DYNAMO_MATCHES_TABLE)=' >> .env.production || true
+        - printenv | grep -E '^(USE_AWS|BEDROCK_MODEL_ID|DYNAMO_USERS_TABLE|DYNAMO_LISTINGS_TABLE|DYNAMO_DEMANDS_TABLE|DYNAMO_MATCHES_TABLE)=' >> .env.production || true
         - npm run build
   artifacts:
     baseDirectory: .next
