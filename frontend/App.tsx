@@ -139,7 +139,7 @@ export default function Home() {
     }
   };
   const header = (
-    <header className="flex items-center justify-between gap-3 border-b bg-white px-4 py-3">
+    <header className="app-header flex items-center justify-between gap-3 border-b bg-white px-4 py-3">
       <button
         onClick={() =>
           setPage(
@@ -189,9 +189,9 @@ export default function Home() {
     <span className="chip">{t("status_" + s)}</span>
   );
   const frame = (children: React.ReactNode) => (
-    <main className="mx-auto min-h-screen max-w-3xl bg-[#f4f7ef]">
+    <main className="app-shell mx-auto min-h-screen bg-[#f4f7ef]">
       {header}
-      <div className="space-y-4 p-4">
+      <div className="app-content space-y-4 p-4">
         {msg && (
           <div role="status" className="card border-amber-300 text-amber-900">
             {msg}
@@ -649,21 +649,36 @@ function LoginView({
         ? "ਖੇਤਲੂਪ ਵਿੱਚ ਸਾਈਨ ਇਨ ਕਰੋ"
         : "Sign in to KhetLoop";
   return (
-    <>
-      <section className="card mt-3">
-        <div className="text-3xl">🌾</div>
-        <h1 className="mt-2 text-2xl font-bold">{title}</h1>
-        <p className="mt-2">{tr(lang, "intro")}</p>
+    <div className="login-layout">
+      <section className="welcome-panel">
+        <div className="welcome-kicker"><span className="welcome-icon">🌾</span> GROW · GATHER · REUSE</div>
+        <h1>{title}</h1>
+        <p className="welcome-copy">{tr(lang, "intro")}</p>
+        <div className="welcome-benefits" aria-label="KhetLoop benefits">
+          <div><span>01</span><p><b>Find nearby partners</b><small>Connect with farmers and buyers in your district.</small></p></div>
+          <div><span>02</span><p><b>Make residue valuable</b><small>Turn leftover crop material into a useful resource.</small></p></div>
+          <div><span>03</span><p><b>Keep it simple</b><small>Manage listings and offers from one place.</small></p></div>
+        </div>
+        <div className="welcome-footer"><span className="live-dot" /> A better loop for every harvest</div>
       </section>
-      <section className="card">
+      <section className="card auth-card">
+        <div className="auth-heading">
+          <span className="auth-eyebrow">YOUR K H E T L O O P ACCOUNT</span>
+          <h2>{mode === "login" ? "Welcome back" : "Join the community"}</h2>
+          <p>{mode === "login" ? "Sign in to continue to your workspace." : "Create an account to get started."}</p>
+        </div>
         <div className="mb-4 flex gap-2">
           <button
+            type="button"
+            aria-pressed={mode === "login"}
             className={mode === "login" ? "primary flex-1" : "secondary flex-1"}
             onClick={() => setMode("login")}
           >
             Sign in
           </button>
           <button
+            type="button"
+            aria-pressed={mode === "register"}
             className={
               mode === "register" ? "primary flex-1" : "secondary flex-1"
             }
@@ -765,18 +780,22 @@ function LoginView({
           </button>
         </form>
         {mode === "login" && (
-          <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm">
-            <b>Demo sign-in</b>
-            <p>Admin: +91 90000 0000 · admin123</p>
-            <p>Farmer: +91 98765 4300 · farmer123</p>
-            <p>Seed companies: +91 90000 1001–1006 · company123</p>
-            <small>
-              Demo accounts only. New company accounts wait for admin approval.
-            </small>
+          <div className="demo-credentials mt-4 rounded-lg p-3 text-sm">
+            <b>Exploring the demo?</b>
+            <p>Use a demo account to preview a farmer, buyer, or admin workspace.</p>
+            <details>
+              <summary>Show demo sign-in details</summary>
+              <div className="demo-details">
+                <p>Admin: +91 90000 0000 · admin123</p>
+                <p>Farmer: +91 98765 4300 · farmer123</p>
+                <p>Seed companies: +91 90000 1001–1006 · company123</p>
+              </div>
+            </details>
+            <small>New company accounts need admin approval before sign-in.</small>
           </div>
         )}
       </section>
-    </>
+    </div>
   );
 }
 function AddForm({
