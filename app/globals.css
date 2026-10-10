@@ -586,6 +586,9 @@ label .field { font-weight: 400; }
 }
 
 .farmer-impact-card, .transactions-panel, .admin-transactions { grid-column: 1 / -1; }
+.buyer-overview-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; gap:16px; }
+.buyer-overview-grid > .buyer-sourcing-card, .buyer-demand-listings > .card { min-width:0; height:100%; }
+.buyer-demand-listings { display:grid; align-content:start; gap:14px; min-width:0; }
 .impact-card-heading { display:flex; align-items:center; gap:12px; }
 .impact-card-heading h2, .transaction-chart-card h3 { margin:0; color:#294d35; font-size:1.05rem; font-weight:750; }
 .impact-card-heading p { margin:3px 0 0; color:#778176; font-size:.82rem; }
@@ -630,7 +633,29 @@ label .field { font-weight: 400; }
 .chart-empty { display:grid; min-height:200px; place-items:center; color:#899188; font-size:.82rem; }
 .admin-transaction-filters > select { min-width:140px; }
 .admin-transactions > .admin-section-heading { align-items:center; }
+.admin-listings { grid-column:1 / -1; width:100%; }
+.admin-approval-row.has-reset-code { display:grid; grid-template-columns:39px minmax(0,1fr) max-content; align-items:center; gap:12px; }
+.admin-approval-row.has-reset-code .admin-company-info { min-width:0; }
+.admin-approval-row.has-reset-code .admin-company-info small { overflow-wrap:anywhere; }
+.admin-approval-row.has-reset-code .admin-approve-button { max-width:240px; min-width:160px; white-space:normal; }
+.admin-approval-row.has-reset-code .password-reset-code { grid-column:1 / -1; width:100%; min-width:0; flex:none; }
+.transaction-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.transaction-card-top > div { display:grid; gap:4px; }
+.transaction-card-top > div > b { color:#2f5239; font-size:.98rem; }
+.transaction-card-top small { color:#778176; font-size:.75rem; }
+.transaction-parties { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:13px 0; }
+.transaction-parties > div, .transaction-values > div { display:grid; align-content:center; gap:4px; min-width:0; padding:11px 13px; border-radius:10px; background:#f7f9f5; }
+.transaction-parties small, .transaction-values small { color:#7b867b; font-size:.68rem; }
+.transaction-parties b { overflow-wrap:anywhere; color:#344d38; font-size:.85rem; }
+.transaction-values { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; }
+.transaction-values b { overflow-wrap:anywhere; color:#405144; font-size:.82rem; }
+.transaction-values .transaction-total { background:#edf4e9; }
+.transaction-values .transaction-total b { color:#285439; font-size:.95rem; }
 @media (max-width:700px) {
+  .admin-approval-row.has-reset-code { grid-template-columns:39px minmax(0,1fr); }
+  .admin-approval-row.has-reset-code .admin-approve-button { grid-column:2; justify-self:start; margin-left:0; }
+  .transaction-values { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .buyer-overview-grid { grid-template-columns:1fr; }
   .admin-transaction-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .admin-transaction-charts { grid-template-columns:1fr; }
   .pie-breakdown { grid-template-columns:minmax(110px,140px) 1fr; gap:12px; }

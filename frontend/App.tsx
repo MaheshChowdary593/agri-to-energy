@@ -187,6 +187,10 @@ export default function Home() {
             : "ਪੇਸ਼ਕਸ਼ ਮਨਜ਼ੂਰ। ਚੁਕਾਈ ਤੈਅ ਹੈ।",
       );
       setFresh((x) => x + 1);
+      setSelected(null);
+      setOffers([]);
+      setAdvice(null);
+      setPage("farmer");
     }
   };
   const header = (
@@ -580,6 +584,7 @@ export default function Home() {
             ＋ {t("postDemand")}
           </button>
         </section>
+        <div className="buyer-overview-grid">
         <section className="card buyer-sourcing-card">
           <div className="buyer-sourcing-heading"><span className="buyer-sourcing-icon" aria-hidden="true">↗</span><div><span>{t("sourcingOverview")}</span><small>{user.district} · {user.state}</small></div></div>
           <div className="buyer-sourcing-total"><b>{totalRequested.toLocaleString("en-IN")}</b><span>{t("tonnesRequested")}</span></div>
@@ -591,7 +596,7 @@ export default function Home() {
           <div className="buyer-sourcing-footer"><span className="verified-badge">✓ {t("businessApproved")}</span><span>{myDemands.length} {t(myDemands.length === 1 ? "activeRequests" : "activeRequestsPlural")}</span></div>
           {myDemands.length === 0 && <button className="buyer-sourcing-empty" onClick={() => setPage("demand")}>{t("startSourcing")} <span aria-hidden="true">→</span></button>}
         </section>
-        <TransactionsPanel title="Sourcing transactions" transactions={transactions.filter(row => row.demand.buyerId === user.id)} role="buyer" />
+        <div className="buyer-demand-listings">
         {dl ? (
           <div className="card">{t("loading")}</div>
         ) : de ? (
@@ -640,6 +645,9 @@ export default function Home() {
             );
           })
         )}
+        </div>
+        </div>
+        <TransactionsPanel title="Sourcing transactions" transactions={transactions.filter(row => row.demand.buyerId === user.id)} role="buyer" />
       </>,
     );
   }
@@ -727,7 +735,7 @@ export default function Home() {
       </section>
       <section className="card admin-approvals">
         <div className="admin-section-heading"><div><span className="admin-section-icon">⌑</span><div><h2>{t("passwordResetRequests")}</h2><p>{t("confirmUserPhone")}</p></div></div></div>
-        {!passwordResets ? <p>{t("loading")}</p> : passwordResets.length === 0 ? <div className="admin-empty"><span className="admin-empty-icon">✓</span><span>{t("noPasswordResetRequests")}</span></div> : passwordResets.map((request:any) => <div className="admin-approval-row" key={request.id}><span className="admin-company-avatar">↻</span><span className="admin-company-info"><b>{request.userName}</b><small>{request.phone} · {new Date(request.requestedAt).toLocaleString()}</small></span><button className="primary admin-approve-button" onClick={async()=>{if(!confirm(t("confirmUserPhone")))return;const response=await fetch("/api/admin/password-resets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({requestId:request.id})});const result=await response.json();if(response.ok){setResetCodes(codes=>({...codes,[request.id]:result.code}));await refreshPasswordResets();}else setMsg(result.error??t("error"));}}>{t(request.status==="issued"?"issueNewCode":"verifyAndIssueCode")}</button>{resetCodes[request.id]&&<div className="password-reset-code"><code>{resetCodes[request.id]}</code><button className="profile-action" onClick={()=>void navigator.clipboard?.writeText(resetCodes[request.id])}>{t("copyCode")}</button><small>{t("resetCodeExpires")}</small></div>}</div>)}
+        {!passwordResets ? <p>{t("loading")}</p> : passwordResets.length === 0 ? <div className="admin-empty"><span className="admin-empty-icon">✓</span><span>{t("noPasswordResetRequests")}</span></div> : passwordResets.map((request:any) => <div className={`admin-approval-row${resetCodes[request.id] ? " has-reset-code" : ""}`} key={request.id}><span className="admin-company-avatar">↻</span><span className="admin-company-info"><b>{request.userName}</b><small>{request.phone} · {new Date(request.requestedAt).toLocaleString()}</small></span><button className="primary admin-approve-button" onClick={async()=>{if(!confirm(t("confirmUserPhone")))return;const response=await fetch("/api/admin/password-resets",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({requestId:request.id})});const result=await response.json();if(response.ok){setResetCodes(codes=>({...codes,[request.id]:result.code}));await refreshPasswordResets();}else setMsg(result.error??t("error"));}}>{t(request.status==="issued"?"issueNewCode":"verifyAndIssueCode")}</button>{resetCodes[request.id]&&<div className="password-reset-code"><code>{resetCodes[request.id]}</code><button className="profile-action" onClick={()=>void navigator.clipboard?.writeText(resetCodes[request.id])}>{t("copyCode")}</button><small>{t("resetCodeExpires")}</small></div>}</div>)}
       </section>
       <div className="grid grid-cols-2 gap-3 admin-kpis">
         {[
@@ -885,7 +893,12 @@ function PieBreakdown({data,tonnes=false}:{data:{name:string;value:number}[];ton
 function TransactionCard({row,role}:{row:TransactionRow;role:"farmer"|"buyer"|"admin"}) {
   const {match,listing,demand}=row;
   const tonnes=matchedTonnes(row), value=tonnes*match.agreedPricePerTonne;
-  return <article className="transaction-card"><div className="transaction-card-main"><div><b>{listing.crop} residue · {tonnes.toFixed(1)} t matched</b><small>{listing.district??"District unavailable"} · Match {match.id.slice(0,8)}</small></div><span className="chip">{match.status.replaceAll("_"," ")}</span></div><div className="transaction-card-facts"><span>{role!=="farmer"&&<>Farmer: <b>{row.farmerName}</b> · </>}{role!=="buyer"&&<>Company: <b>{row.buyerName}</b> · </>}{demand.product}</span><span>₹{match.agreedPricePerTonne.toLocaleString("en-IN")}/t · {match.status==="paid"?"Paid":"Estimated transaction value"}: ₹{value.toLocaleString("en-IN")}</span><span>Pickup: {match.pickupDate??"Not scheduled"}</span></div><details><summary>Transaction details and status history</summary><ul className="transaction-history">{(match.statusHistory??[]).map((event,index)=><li key={`${event.at}-${index}`}><b>{event.status.replaceAll("_"," ")}</b><span>{event.by===listing.farmerId?row.farmerName:event.by===demand.buyerId?row.buyerName:"Admin"} · {new Date(event.at).toLocaleString()}</span></li>)}</ul></details></article>;
+  return <article className="transaction-card">
+    <div className="transaction-card-top"><div><b>{listing.crop} residue · {demand.product}</b><small>{listing.district??"District unavailable"} · Match {match.id.slice(0,8)}</small></div><span className="chip">{match.status.replaceAll("_"," ")}</span></div>
+    <div className="transaction-parties"><div><small>Farmer</small><b>{row.farmerName}</b></div><div><small>Company</small><b>{row.buyerName}</b></div></div>
+    <div className="transaction-values"><div><small>Matched quantity</small><b>{tonnes.toFixed(1)} tonnes</b></div><div><small>Price per tonne</small><b>₹{match.agreedPricePerTonne.toLocaleString("en-IN")}</b></div><div className="transaction-total"><small>{match.status==="paid"?"Paid amount":"Estimated deal value"}</small><b>₹{value.toLocaleString("en-IN")}</b></div><div><small>Pickup date</small><b>{match.pickupDate??"Not scheduled"}</b></div></div>
+    <details><summary>Transaction details and status history</summary><ul className="transaction-history">{(match.statusHistory??[]).map((event,index)=><li key={`${event.at}-${index}`}><b>{event.status.replaceAll("_"," ")}</b><span>{event.by===listing.farmerId?row.farmerName:event.by===demand.buyerId?row.buyerName:"Admin"} · {new Date(event.at).toLocaleString()}</span></li>)}</ul></details>
+  </article>;
 }
 
 function MatchTimeline({match,t}:{match:Match;t:(key:string)=>string}){
