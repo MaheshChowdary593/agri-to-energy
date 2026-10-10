@@ -584,3 +584,58 @@ label .field { font-weight: 400; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+.farmer-impact-card, .transactions-panel, .admin-transactions { grid-column: 1 / -1; }
+.impact-card-heading { display:flex; align-items:center; gap:12px; }
+.impact-card-heading h2, .transaction-chart-card h3 { margin:0; color:#294d35; font-size:1.05rem; font-weight:750; }
+.impact-card-heading p { margin:3px 0 0; color:#778176; font-size:.82rem; }
+.farmer-impact-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:20px 0; }
+.farmer-impact-metrics > div, .admin-transaction-stats > div { display:flex; flex-direction:column; gap:5px; padding:16px; border:1px solid #e8ece4; border-radius:14px; background:#fbfcf9; }
+.farmer-impact-metrics b { color:#315e40; font-size:1.5rem; }
+.farmer-impact-metrics small, .admin-transaction-stats small { color:#778176; font-size:.78rem; }
+.farmer-impact-progress > div:first-child { display:flex; justify-content:space-between; gap:10px; margin-bottom:7px; color:#536352; font-size:.82rem; }
+.farmer-impact-progress .admin-meter { height:9px; border-radius:20px; background:#edf0e9; overflow:hidden; }
+.farmer-impact-progress .admin-meter i { display:block; height:100%; border-radius:20px; background:#4d875d; transition:width .25s ease; }
+.impact-estimate-note { display:block; margin-top:14px; color:#7b847a; font-size:.72rem; line-height:1.5; }
+.transaction-filters { display:flex; flex-wrap:wrap; gap:9px; margin:16px 0; }
+.transaction-filters > input, .transaction-filters > select, .transaction-filters > label { min-height:42px; padding:8px 10px; border:1px solid #dfe5dc; border-radius:9px; background:white; color:#405144; font-size:.82rem; }
+.transaction-filters > input { min-width:min(100%,260px); flex:1; }
+.transaction-filters > label { display:flex; align-items:center; gap:8px; }
+.transaction-list { display:grid; gap:10px; }
+.transaction-card { padding:15px; border:1px solid #e7ebe3; border-radius:13px; background:#fff; }
+.transaction-card-main { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.transaction-card-main > div, .transaction-card-facts { display:flex; flex-direction:column; gap:4px; }
+.transaction-card-main b { color:#2f5239; }
+.transaction-card-main small, .transaction-card-facts { color:#778176; font-size:.78rem; }
+.transaction-card-facts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 14px; margin:12px 0; }
+.transaction-card-facts b { color:#415343; }
+.transaction-card details { border-top:1px solid #eef0eb; padding-top:10px; color:#59675a; font-size:.78rem; }
+.transaction-card summary { cursor:pointer; font-weight:650; }
+.transaction-history { display:grid; gap:7px; margin:10px 0 0; padding:0; list-style:none; }
+.transaction-history li { display:flex; justify-content:space-between; gap:10px; }
+.transaction-history span { color:#899188; }
+.admin-transaction-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:16px 0; }
+.admin-transaction-stats b { color:#315e40; font-size:1.25rem; }
+.admin-transaction-charts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.transaction-chart-card { min-width:0; padding:15px; border:1px solid #e8ece4; border-radius:14px; }
+.transaction-chart-card h3 { font-size:.9rem; }
+.pie-breakdown { display:grid; min-height:220px; grid-template-columns: minmax(120px, 180px) 1fr; align-items:center; justify-content:center; gap:18px; padding:12px 4px; }
+.pie-visual { display:grid; width:min(100%,165px); aspect-ratio:1; place-items:center; justify-self:center; border-radius:50%; }
+.pie-visual::before { width:55%; aspect-ratio:1; border-radius:50%; background:white; content:""; grid-area:1/1; }
+.pie-visual > span { z-index:1; grid-area:1/1; color:#315e40; font-size:1.15rem; font-weight:750; }
+.pie-breakdown ul { display:grid; gap:9px; margin:0; padding:0; list-style:none; }
+.pie-breakdown li { display:grid; grid-template-columns:10px 1fr auto; align-items:center; gap:8px; color:#647165; font-size:.77rem; text-transform:capitalize; }
+.pie-breakdown li i { width:9px; height:9px; border-radius:3px; }
+.pie-breakdown li b { color:#405144; font-size:.74rem; }
+.chart-empty { display:grid; min-height:200px; place-items:center; color:#899188; font-size:.82rem; }
+.admin-transaction-filters > select { min-width:140px; }
+.admin-transactions > .admin-section-heading { align-items:center; }
+@media (max-width:700px) {
+  .admin-transaction-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .admin-transaction-charts { grid-template-columns:1fr; }
+  .pie-breakdown { grid-template-columns:minmax(110px,140px) 1fr; gap:12px; }
+  .transaction-card-facts { grid-template-columns:1fr; }
+  .farmer-impact-metrics { gap:8px; }
+  .farmer-impact-metrics > div { padding:12px; }
+  .farmer-impact-metrics b { font-size:1.2rem; }
+}

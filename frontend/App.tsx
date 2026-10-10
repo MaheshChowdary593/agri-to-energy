@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { seedUsers } from "@/shared/seed";
 import { LOCATIONS } from "@/shared/locations";
 import { tr } from "@/frontend/i18n";
+import { CONFIG } from "@/shared/config";
 import type { Language, Listing, Match, Role, User } from "@/shared/types";
 type Offer = {
   id: string;
@@ -14,6 +15,9 @@ type Offer = {
   score: number;
   reasons: string[];
 };
+type TransactionRow = { match: Match; listing: Listing; demand: any; farmerName: string; buyerName: string };
+const matchedTonnes = (row: TransactionRow) => Math.min(row.listing.estimatedTonnes, row.demand.tonnesNeeded);
+const CHART_COLORS = ["#3f7652", "#e1a94c", "#6f98a5", "#b67555", "#8c9a76"];
 const useApi = <T,>(url: string) => {
   const [data, setData] = useState<T | null>(null),
     [error, setError] = useState(false),
@@ -102,6 +106,15 @@ export default function Home() {
     { data: passwordResets, refresh: refreshPasswordResets } = useApi<any[]>("/api/admin/password-resets?" + fresh);
   const myListings = (listings ?? []).filter((x) => x.farmerId === user.id);
   const myDemands = (demands ?? []).filter((x) => x.buyerId === user.id);
+  const transactions = useMemo<TransactionRow[]>(() => (matches ?? []).flatMap(match => {
+    const listing = (listings ?? []).find(item => item.id === match.listingId);
+    const demand = (demands ?? []).find(item => item.id === match.demandId);
+    if (!listing || !demand) return [];
+    const findUser = (id: string) => (adminUsers ?? []).find(person => person.id === id)?.name;
+    return [{ match, listing, demand, farmerName: match.farmerName ?? findUser(listing.farmerId) ?? (listing.farmerId === user.id ? user.name : "Farmer"), buyerName: match.buyerName ?? (demand.company || findUser(demand.buyerId) || (demand.buyerId === user.id ? user.name : "Company")) }];
+  }), [matches, listings, demands, adminUsers, user.id, user.name]);
+  const farmerTransactions = transactions.filter(row => row.listing.farmerId === user.id);
+  const farmerCollectedTonnes = farmerTransactions.filter(row => row.match.status === "collected" || row.match.status === "paid").reduce((sum, row) => sum + matchedTonnes(row), 0);
   const adminVisibleListings = useMemo(() => {
     const query = adminQuery.trim().toLocaleLowerCase();
     return (listings ?? []).filter((listing) => {
@@ -427,6 +440,8 @@ export default function Home() {
               .toLocaleString("en-IN")}
           </div>
         </section>
+        <FarmerImpactCard tonnes={farmerCollectedTonnes} co2Factor={CONFIG.co2TonnesPerTonneStraw} />
+        <TransactionsPanel title="Your transactions" transactions={farmerTransactions} role="farmer" />
         {ll ? (
           <div className="card">{t("loading")}</div>
         ) : le ? (
@@ -576,6 +591,7 @@ export default function Home() {
           <div className="buyer-sourcing-footer"><span className="verified-badge">✓ {t("businessApproved")}</span><span>{myDemands.length} {t(myDemands.length === 1 ? "activeRequests" : "activeRequestsPlural")}</span></div>
           {myDemands.length === 0 && <button className="buyer-sourcing-empty" onClick={() => setPage("demand")}>{t("startSourcing")} <span aria-hidden="true">→</span></button>}
         </section>
+        <TransactionsPanel title="Sourcing transactions" transactions={transactions.filter(row => row.demand.buyerId === user.id)} role="buyer" />
         {dl ? (
           <div className="card">{t("loading")}</div>
         ) : de ? (
@@ -746,6 +762,7 @@ export default function Home() {
           )) : <div className="admin-empty"><span className="admin-empty-icon">⌖</span><span><b>No district activity yet</b><small>Collected residue will appear here.</small></span></div>;
         })()}
       </section>
+      <AdminTransactions transactions={transactions} />
       <section className="card admin-listings">
         <div className="admin-section-heading"><div><span className="admin-section-icon">▤</span><div><h2>Residue listings</h2><p>Monitor supply and update pickup progress.</p></div></div><span className="admin-listing-total">{listings?.length ?? 0} total</span></div>
         <div className="admin-listing-filters"><label className="admin-search"><span aria-hidden="true">⌕</span><input aria-label={t("searchListings")} placeholder={t("searchListings")} value={adminQuery} onChange={event => setAdminQuery(event.target.value)} /></label><label><span className="sr-only">{t("filterStatus")}</span><select value={adminStatus} onChange={event => setAdminStatus(event.target.value)}><option value="all">{t("allStatuses")}</option>{["open","matched","pickup_scheduled","collected","paid"].map(value => <option value={value} key={value}>{t(`status_${value}`)}</option>)}</select></label></div>
@@ -811,6 +828,66 @@ export default function Home() {
     </>,
   );
 }
+function FarmerImpactCard({tonnes,co2Factor}:{tonnes:number;co2Factor:number}) {
+  const milestones = [5, 10, 25, 50, 100];
+  const next = milestones.find(value => tonnes < value) ?? 100;
+  const achieved = milestones.filter(value => value <= tonnes);
+  const previous = achieved.length ? achieved[achieved.length - 1] : 0;
+  const progress = Math.max(0, Math.min(100, ((tonnes - previous) / (next - previous || 1)) * 100));
+  return <section className="card farmer-impact-card">
+    <div className="impact-card-heading"><span className="admin-section-icon">♻</span><div><h2>Your residue impact</h2><p>Every completed pickup is a step away from burning residue.</p></div></div>
+    <div className="farmer-impact-metrics"><div><b>{tonnes.toFixed(1)} t</b><small>Residue collected</small></div><div><b>{(tonnes * co2Factor).toFixed(1)} t</b><small>Estimated emissions avoided</small></div></div>
+    <div className="farmer-impact-progress"><div><span>{tonnes >= 100 ? "100 tonne milestone reached" : `${(next - tonnes).toFixed(1)} tonnes to your next milestone`}</span><b>{tonnes.toFixed(1)} / {next} t</b></div><div className="admin-meter"><i style={{ width: `${progress}%` }} /></div></div>
+    <small className="impact-estimate-note">Emissions are an estimate using the project assumption of {co2Factor} tonnes CO₂ per tonne of collected straw.</small>
+  </section>;
+}
+
+function TransactionsPanel({title,transactions,role}:{title:string;transactions:TransactionRow[];role:"farmer"|"buyer"}) {
+  const [statusFilter,setStatusFilter] = useState("all"), [query,setQuery] = useState("");
+  const rows = transactions.filter(row => (statusFilter === "all" || row.match.status === statusFilter) && `${row.match.id} ${row.listing.crop} ${row.listing.district ?? ""} ${row.farmerName} ${row.buyerName} ${row.demand.product}`.toLowerCase().includes(query.toLowerCase()));
+  return <section className="card transactions-panel">
+    <div className="admin-section-heading"><div><span className="admin-section-icon">▤</span><div><h2>{title}</h2><p>Pickup progress, agreed price, quantity, and status history.</p></div></div><span className="admin-listing-total">{transactions.length} total</span></div>
+    <div className="transaction-filters"><input aria-label="Search transactions" placeholder="Search by crop, district, or counterparty" value={query} onChange={event=>setQuery(event.target.value)} /><select aria-label="Filter transactions by status" value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="all">All statuses</option>{["matched","pickup_scheduled","collected","paid"].map(status=><option key={status} value={status}>{status.replaceAll("_"," ")}</option>)}</select></div>
+    {!rows.length ? <div className="admin-empty"><span className="admin-empty-icon">↗</span><span><b>No transactions found</b><small>{transactions.length ? "Try changing your search or filter." : role === "farmer" ? "Accepted offers will appear here." : "Accepted farmer offers will appear here."}</small></span></div> : <div className="transaction-list">{rows.map(row=><TransactionCard key={row.match.id} row={row} role={role}/>)}</div>}
+  </section>;
+}
+
+function AdminTransactions({transactions}:{transactions:TransactionRow[]}) {
+  const [status,setStatus]=useState("all"),[crop,setCrop]=useState("all"),[district,setDistrict]=useState("all"),[query,setQuery]=useState(""),[from,setFrom]=useState(""),[to,setTo]=useState("");
+  const districts=Array.from(new Set(transactions.map(row=>row.listing.district).filter((value):value is string=>Boolean(value)))).sort();
+  const filtered=transactions.filter(row=>{
+    const eventDate=(row.match.statusHistory?.[0]?.at??row.match.pickupDate??"").slice(0,10);
+    return (status==="all"||row.match.status===status)&&(crop==="all"||row.listing.crop===crop)&&(district==="all"||row.listing.district===district)&&(!from||eventDate>=from)&&(!to||eventDate<=to)&&`${row.match.id} ${row.farmerName} ${row.buyerName} ${row.demand.company} ${row.listing.crop} ${row.listing.district??""}`.toLowerCase().includes(query.toLowerCase());
+  });
+  const collected=filtered.filter(row=>row.match.status==="collected"||row.match.status==="paid");
+  const tonnes=collected.reduce((sum,row)=>sum+matchedTonnes(row),0), paid=filtered.filter(row=>row.match.status==="paid").reduce((sum,row)=>sum+matchedTonnes(row)*row.match.agreedPricePerTonne,0);
+  const byStatus=["matched","pickup_scheduled","collected","paid"].map(key=>({name:key.replaceAll("_"," "),value:filtered.filter(row=>row.match.status===key).length})).filter(item=>item.value>0);
+  const byCrop=["paddy","wheat"].map(key=>({name:key,value:collected.filter(row=>row.listing.crop===key).reduce((sum,row)=>sum+matchedTonnes(row),0)})).filter(item=>item.value>0);
+  const exportCsv=()=>{const quote=(value:unknown)=>`"${String(value??"").replaceAll('"','""')}"`;const csv=[["Match ID","Farmer","Company","Crop","District","Matched tonnes (estimated)","Price per tonne","Agreed value (estimated)","Pickup date","Status"],...filtered.map(row=>[row.match.id,row.farmerName,row.buyerName,row.listing.crop,row.listing.district,matchedTonnes(row),row.match.agreedPricePerTonne,matchedTonnes(row)*row.match.agreedPricePerTonne,row.match.pickupDate,row.match.status])].map(line=>line.map(quote).join(",")).join("\n");const link=document.createElement("a");link.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));link.download="harvestloop-transactions.csv";link.click();URL.revokeObjectURL(link.href);};
+  return <section className="card admin-transactions">
+    <div className="admin-section-heading"><div><span className="admin-section-icon">▤</span><div><h2>Transaction overview</h2><p>All matched farmer and buyer transactions. Values based on estimated listing tonnes.</p></div></div><button className="secondary" onClick={exportCsv}>Export filtered CSV</button></div>
+    <div className="admin-transaction-stats"><div><b>{filtered.length}</b><small>Transactions</small></div><div><b>{tonnes.toFixed(1)} t</b><small>Collected residue</small></div><div><b>₹{paid.toLocaleString("en-IN")}</b><small>Recorded as paid</small></div><div><b>{(tonnes*CONFIG.co2TonnesPerTonneStraw).toFixed(1)} t</b><small>Estimated CO₂ avoided</small></div></div>
+    <div className="admin-transaction-charts"><div className="transaction-chart-card"><h3>Transactions by status</h3><PieBreakdown data={byStatus}/></div><div className="transaction-chart-card"><h3>Collected residue by crop</h3><PieBreakdown data={byCrop} tonnes/></div></div>
+    <div className="transaction-filters admin-transaction-filters"><input aria-label="Search transactions" placeholder="Search farmer, company, crop, or match ID" value={query} onChange={event=>setQuery(event.target.value)}/><select aria-label="Filter status" value={status} onChange={event=>setStatus(event.target.value)}><option value="all">All statuses</option>{["matched","pickup_scheduled","collected","paid"].map(value=><option key={value} value={value}>{value.replaceAll("_"," ")}</option>)}</select><select aria-label="Filter crop" value={crop} onChange={event=>setCrop(event.target.value)}><option value="all">All crops</option><option value="paddy">Paddy</option><option value="wheat">Wheat</option></select><select aria-label="Filter district" value={district} onChange={event=>setDistrict(event.target.value)}><option value="all">All districts</option>{districts.map(value=><option key={value}>{value}</option>)}</select><label>From<input type="date" value={from} onChange={event=>setFrom(event.target.value)}/></label><label>To<input type="date" value={to} onChange={event=>setTo(event.target.value)}/></label></div>
+    <div className="transaction-list">{filtered.map(row=><TransactionCard key={row.match.id} row={row} role="admin"/>)}{!filtered.length&&<div className="admin-empty"><span className="admin-empty-icon">⌕</span><span><b>No transactions match these filters</b><small>Adjust the search or filters to see more.</small></span></div>}</div>
+    <small className="impact-estimate-note">Emissions avoided are estimated using {CONFIG.co2TonnesPerTonneStraw} tonnes CO₂ per tonne of collected straw; this is not a direct air-quality measurement.</small>
+  </section>;
+}
+
+function PieBreakdown({data,tonnes=false}:{data:{name:string;value:number}[];tonnes?:boolean}) {
+  const total=data.reduce((sum,item)=>sum+item.value,0);
+  if(!total)return <p className="chart-empty">No {tonnes?"completed pickups":"transaction"} data yet.</p>;
+  let cursor=0;
+  const gradients=data.map((item,index)=>{const start=cursor;cursor+=item.value/total*100;return `${CHART_COLORS[index%CHART_COLORS.length]} ${start}% ${cursor}%`;}).join(", ");
+  return <div className="pie-breakdown"><div className="pie-visual" role="img" aria-label={data.map(item=>`${item.name}: ${item.value}${tonnes?" tonnes":" transactions"}`).join(", ")} style={{background:`conic-gradient(${gradients})`}}><span>{tonnes?`${total.toFixed(1)} t`:total}</span></div><ul>{data.map((item,index)=><li key={item.name}><i style={{backgroundColor:CHART_COLORS[index%CHART_COLORS.length]}}/><span>{item.name}</span><b>{tonnes?`${item.value.toFixed(1)} t`:`${item.value} · ${Math.round(item.value/total*100)}%`}</b></li>)}</ul></div>;
+}
+
+function TransactionCard({row,role}:{row:TransactionRow;role:"farmer"|"buyer"|"admin"}) {
+  const {match,listing,demand}=row;
+  const tonnes=matchedTonnes(row), value=tonnes*match.agreedPricePerTonne;
+  return <article className="transaction-card"><div className="transaction-card-main"><div><b>{listing.crop} residue · {tonnes.toFixed(1)} t matched</b><small>{listing.district??"District unavailable"} · Match {match.id.slice(0,8)}</small></div><span className="chip">{match.status.replaceAll("_"," ")}</span></div><div className="transaction-card-facts"><span>{role!=="farmer"&&<>Farmer: <b>{row.farmerName}</b> · </>}{role!=="buyer"&&<>Company: <b>{row.buyerName}</b> · </>}{demand.product}</span><span>₹{match.agreedPricePerTonne.toLocaleString("en-IN")}/t · {match.status==="paid"?"Paid":"Estimated transaction value"}: ₹{value.toLocaleString("en-IN")}</span><span>Pickup: {match.pickupDate??"Not scheduled"}</span></div><details><summary>Transaction details and status history</summary><ul className="transaction-history">{(match.statusHistory??[]).map((event,index)=><li key={`${event.at}-${index}`}><b>{event.status.replaceAll("_"," ")}</b><span>{event.by===listing.farmerId?row.farmerName:event.by===demand.buyerId?row.buyerName:"Admin"} · {new Date(event.at).toLocaleString()}</span></li>)}</ul></details></article>;
+}
+
 function MatchTimeline({match,t}:{match:Match;t:(key:string)=>string}){
  const stages:Match["status"][]=["matched","pickup_scheduled","collected","paid"];
  const current=stages.indexOf(match.status);
@@ -1442,7 +1519,7 @@ function Pickup({
   t: (k: string) => string;
   onChange: () => void;
 }) {
-  const [d, setD] = useState("2026-10-25"),
+  const [d, setD] = useState(() => dateOffset(15)),
     [busy, setB] = useState(false);
   return match?.status === "pickup_scheduled" ||
     match?.status === "collected" ||
