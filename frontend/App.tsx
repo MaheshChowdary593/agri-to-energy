@@ -44,6 +44,7 @@ export default function Home() {
     [page, setPage] = useState("home"),
     [selected, setSelected] = useState<Listing | null>(null),
     [offers, setOffers] = useState<Offer[]>([]),
+    [offerSort, setOfferSort] = useState<"score" | "price" | "distance">("score"),
     [advice, setAdvice] = useState<{
       estimatedTonnes: number;
       bestUses: string[];
@@ -478,6 +479,11 @@ export default function Home() {
           ← {t("dashboard")}
         </button>
         <h1 className="text-2xl font-bold">{t("offers")}</h1>
+        <label className="card flex items-center justify-between gap-3 text-sm">Sort offers
+          <select className="field" style={{ maxWidth: 190 }} value={offerSort} onChange={event => setOfferSort(event.target.value as "score" | "price" | "distance")}>
+            <option value="score">Best match</option><option value="price">Highest price</option><option value="distance">Nearest pickup</option>
+          </select>
+        </label>
         {selected && (
           <div className="card offers-summary">
             {t(selected.crop)} · {selected.estimatedTonnes} tonnes
@@ -496,7 +502,7 @@ export default function Home() {
         {!offers.length ? (
           <div className="card">{t("empty")}</div>
         ) : (
-          offers.map((o) => (
+          [...offers].sort((a, b) => offerSort === "price" ? b.pricePerTonne - a.pricePerTonne : offerSort === "distance" ? a.distance - b.distance : b.score - a.score).map((o) => (
             <div key={o.id} className="card offer-card">
               <div className="flex items-start justify-between">
                 <div>
@@ -514,7 +520,7 @@ export default function Home() {
                 </div>
               </div>
               <ul className="mt-2 list-inside list-disc text-sm">
-                {o.reasons.slice(0, 3).map((x) => (
+                {o.reasons.map((x) => (
                   <li key={x}>{x}</li>
                 ))}
               </ul>
@@ -1148,6 +1154,12 @@ function ProfileSettings({
   );
 }
 
+function dateOffset(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function AddForm({
   user,
   lang,
@@ -1166,9 +1178,9 @@ function AddForm({
   const [crop, setCrop] = useState<"paddy" | "wheat">("paddy"),
     [acres, setAcres] = useState(""),
     [district, setDistrict] = useState(user.district),
-    [harvestDate, setH] = useState("2026-10-15"),
-    [availableFrom, setF] = useState("2026-10-20"),
-    [availableTo, setT] = useState("2026-11-20"),
+    [harvestDate, setH] = useState(() => dateOffset(5)),
+    [availableFrom, setF] = useState(() => dateOffset(7)),
+    [availableTo, setT] = useState(() => dateOffset(37)),
     [notes, setN] = useState("");
   return (
     <form
