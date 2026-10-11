@@ -597,6 +597,7 @@ export default function Home() {
           {myDemands.length === 0 && <button className="buyer-sourcing-empty" onClick={() => setPage("demand")}>{t("startSourcing")} <span aria-hidden="true">→</span></button>}
         </section>
         <div className="buyer-demand-listings">
+        <h2 className="buyer-pickups-heading">Confirm pickups</h2>
         {dl ? (
           <div className="card">{t("loading")}</div>
         ) : de ? (

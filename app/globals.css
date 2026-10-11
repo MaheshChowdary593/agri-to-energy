@@ -586,9 +586,10 @@ label .field { font-weight: 400; }
 }
 
 .farmer-impact-card, .transactions-panel, .admin-transactions { grid-column: 1 / -1; }
-.buyer-overview-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; gap:16px; }
+.buyer-overview-grid { grid-column:1 / -1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; gap:16px; }
 .buyer-overview-grid > .buyer-sourcing-card, .buyer-demand-listings > .card { min-width:0; height:100%; }
 .buyer-demand-listings { display:grid; align-content:start; gap:14px; min-width:0; }
+.buyer-pickups-heading { margin:0; color:#294d35; font-size:1.15rem; font-weight:750; }
 .impact-card-heading { display:flex; align-items:center; gap:12px; }
 .impact-card-heading h2, .transaction-chart-card h3 { margin:0; color:#294d35; font-size:1.05rem; font-weight:750; }
 .impact-card-heading p { margin:3px 0 0; color:#778176; font-size:.82rem; }
