@@ -1031,6 +1031,7 @@ function LoginView({
     [name, setName] = useState(""),
     [phone, setPhone] = useState(""),
     [password, setPassword] = useState(""),
+    [confirmPassword, setConfirmPassword] = useState(""),
     [recoveryKey, setRecoveryKey] = useState(""),
     [recoveryCode, setRecoveryCode] = useState(""),
     [confirmResetPassword, setConfirmResetPassword] = useState(""),
@@ -1095,7 +1096,14 @@ function LoginView({
                 void onCompleteAccountReset(phone,recoveryCode,password).then(ok=>{if(ok){setMode("login");setPassword("");setConfirmResetPassword("");setRecoveryCode("");setResetRequested(false);}});
               } else void onRequestAccountReset(phone).then(ok=>{if(ok)setResetRequested(true);});
             }
-            else void onRegister(kind, name, phone, password, district);
+            else {
+              if (password !== confirmPassword) {
+                setRecoveryError(tr(lang, "passwordMismatch"));
+                return;
+              }
+              setRecoveryError("");
+              void onRegister(kind, name, phone, password, district);
+            }
           }}
         >
           {mode === "register" && (
@@ -1152,9 +1160,13 @@ function LoginView({
               onChange={(e) => { setPhone(e.target.value); if(mode === "recover") {setResetRequested(false);setPassword("");setConfirmResetPassword("");setRecoveryCode("");} }}
             />
           </label>
-          {(mode === "login" || (mode === "recover" && (recoveryKind === "admin" || resetRequested))) && <label>
+          {(mode === "login" || mode === "register" || (mode === "recover" && (recoveryKind === "admin" || resetRequested))) && <label>
             {mode === "login" ? tr(lang,"password") : tr(lang,"newPassword")}
             <input className="field" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} required minLength={mode === "login" ? 6 : 8} value={password} onChange={(e) => setPassword(e.target.value)} />
+          </label>}
+          {mode === "register" && <label>
+            {tr(lang, "confirmPassword")}
+            <input className="field" type="password" autoComplete="new-password" required minLength={8} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
           </label>}
           {mode === "recover" && recoveryKind === "admin" && <label>{tr(lang,"recoveryKey")}<input className="field" type="password" autoComplete="off" required value={recoveryKey} onChange={event=>setRecoveryKey(event.target.value)} /></label>}
           {mode === "recover" && recoveryKind === "account" && resetRequested && <><label>{tr(lang,"resetCode")}<input className="field" autoComplete="one-time-code" required minLength={8} maxLength={8} value={recoveryCode} onChange={event=>setRecoveryCode(event.target.value.toUpperCase())} /><small>{tr(lang,"enterResetCode")}</small></label><label>{tr(lang,"confirmPassword")}<input className="field" type="password" autoComplete="new-password" required minLength={8} value={confirmResetPassword} onChange={event=>setConfirmResetPassword(event.target.value)} /></label><p className="recovery-help">{tr(lang,"requestReviewNotice")}</p></>}
